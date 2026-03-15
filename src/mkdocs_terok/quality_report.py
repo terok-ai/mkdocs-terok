@@ -55,7 +55,8 @@ class QualityReportConfig:
     tests_label: str = "Tests"
 
     def __post_init__(self) -> None:
-        """Validate configuration values."""
+        """Validate configuration values and normalize root to absolute."""
+        object.__setattr__(self, "root", self.root.resolve())
         if self.graph_depth < 1:
             raise ValueError(f"graph_depth must be >= 1, got {self.graph_depth}")
 
@@ -552,7 +553,8 @@ def _section_dependency_report(cfg: QualityReportConfig) -> str:
     for idx, mod in enumerate(modules):
         path = mod.get("path", "?")
         deps = len(mod.get("depends_on", []))
-        desc = descriptions[idx] if idx < len(descriptions) else ""
+        raw_desc = descriptions[idx] if idx < len(descriptions) else ""
+        desc = raw_desc.replace("|", r"\|").replace("\n", " ")
         if has_layers and cfg.include_layer_overview:
             layer = mod.get("layer", "?")
             lines.append(f"    | `{path}` | {layer} | {deps} | {desc} |\n")

@@ -138,13 +138,24 @@ def _yaml_default(field_info: FieldInfo) -> str:
     if isinstance(d, bool):
         return str(d).lower()
     if isinstance(d, str):
-        return f'"{d}"' if not d or any(c in d for c in " :#{}[]") else d
+        needs_quoting = not d or any(c in d for c in " :#{}[]'\"")
+        if needs_quoting:
+            if '"' in d:
+                escaped = d.replace("'", "''")
+                return f"'{escaped}'"
+            return f'"{d}"'
+        return d
     return str(d)
 
 
 def _strip_rst(text: str) -> str:
     """Strip RST/Markdown inline markup for YAML comments."""
     return text.replace("``", "").replace("**", "")
+
+
+def _md_escape(text: str) -> str:
+    """Escape characters that would break a Markdown table cell."""
+    return text.replace("|", r"\|").replace("\n", " ")
 
 
 def _write_yaml_leaf(
@@ -188,7 +199,7 @@ def _render_section_table(
         for name, dotpath, fi in leaf_fields:
             type_s = _type_str(fi)
             default_s = _default_repr(fi)
-            desc = field_docs.get(dotpath, fi.description or "")
+            desc = _md_escape(field_docs.get(dotpath, fi.description or ""))
             buf.write(f"| `{name}` | {type_s} | {default_s} | {desc} |\n")
         buf.write("\n")
 
@@ -240,7 +251,7 @@ def render_model_tables(
         for name, fi in leaf_fields:
             type_s = _type_str(fi)
             default_s = _default_repr(fi)
-            desc = field_docs.get(name, fi.description or "")
+            desc = _md_escape(field_docs.get(name, fi.description or ""))
             buf.write(f"| `{name}` | {type_s} | {default_s} | {desc} |\n")
         buf.write("\n")
 

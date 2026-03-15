@@ -81,6 +81,20 @@ def test_quality_report_config_custom_buckets() -> None:
     assert config.resolved_histogram_buckets == custom
 
 
+def test_quality_report_config_relative_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Relative root should be resolved to absolute, not cause path doubling."""
+    project = tmp_path / "myproject"
+    project.mkdir()
+    monkeypatch.chdir(project)
+
+    config = QualityReportConfig(root=Path("."), src_dir=Path("pkg"))
+    assert config.root.is_absolute()
+    assert config.resolved_src_dir == project / "pkg"
+    assert config.resolved_tests_dir == project / "tests"
+
+
 @pytest.mark.parametrize(
     ("treemap_exists", "codecov_repo", "expected_fragment"),
     [
