@@ -20,7 +20,7 @@ format:
 # Run tests with coverage
 test:
 	mkdir -p $(REPORTS_DIR)
-	poetry run pytest tests/ --cov=mkdocs_terok --cov-report=term-missing --cov-report=xml:$(COVERAGE_XML) --junitxml=$(JUNIT_XML) -o junit_family=legacy
+	poetry run pytest tests/ --cov --cov-report=term-missing --cov-report=xml --junitxml=$(JUNIT_XML) -o junit_family=legacy
 
 # Check docstring coverage (minimum 95%)
 docstrings:

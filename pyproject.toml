@@ -96,6 +96,13 @@ quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
 
+[tool.coverage.run]
+source = ["mkdocs_terok"]
+relative_files = true
+
+[tool.coverage.xml]
+output = "reports/coverage.xml"
+
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
