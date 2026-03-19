@@ -154,12 +154,6 @@ samp {
   color: var(--md-default-fg-color--light);
   font: 0.7rem var(--md-text-font);
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.mermaid-zoom-wrapper:hover .mermaid-zoom-btn {
-  opacity: 1;
 }
 
 .mermaid-zoom-overlay {
