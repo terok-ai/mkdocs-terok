@@ -130,7 +130,7 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
 
         codecov_treemap_path = (
             Path(self.config.quality_report_codecov_treemap_path)
-            if self.config.quality_report_codecov_treemap_path is not None
+            if self.config.quality_report_codecov_treemap_path
             else None
         )
         qr_config = QualityReportConfig(
@@ -165,7 +165,7 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
 
         integration_dir = (
             Path(self.config.test_map_integration_dir)
-            if self.config.test_map_integration_dir is not None
+            if self.config.test_map_integration_dir
             else None
         )
         tm_config = TestMapConfig(

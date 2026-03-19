@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -51,18 +52,14 @@ def _run_on_files(
     appended: list[object] = []
     files.append = appended.append
 
-    cms = [patch("mkdocs_terok.plugin.File")]
-    for target, value in extra_patches:
-        kw = {"side_effect": value} if callable(value) else {"return_value": value}
-        cms.append(patch(target, **kw))
+    with ExitStack() as stack:
+        mock_file = stack.enter_context(patch("mkdocs_terok.plugin.File"))
+        for target, value in extra_patches:
+            kw = {"side_effect": value} if callable(value) else {"return_value": value}
+            stack.enter_context(patch(target, **kw))
 
-    entered = [cm.__enter__() for cm in cms]
-    try:
-        entered[0].generated = MagicMock(side_effect=_fake_file)
+        mock_file.generated = MagicMock(side_effect=_fake_file)
         plugin.on_files(files, config=config)
-    finally:
-        for cm in reversed(cms):
-            cm.__exit__(None, None, None)
 
     return [f.src_uri for f in appended if hasattr(f, "src_uri")]
 
@@ -86,6 +83,38 @@ class TestConfigDefaults:
         plugin = _make_plugin()
         assert plugin.config.inject_css is True
         assert plugin.config.inject_js is True
+
+    def test_empty_string_optional_paths_coerced_to_none(self) -> None:
+        """Empty strings for optional path settings should not create Path('.')."""
+        plugin = _make_plugin(
+            quality_report=True,
+            quality_report_codecov_treemap_path="",
+            test_map=True,
+            test_map_integration_dir="",
+        )
+        # Verify via the generator config construction (mock generators to inspect args)
+
+        qr_result = SimpleNamespace(markdown="# QR\n", companion_files={})
+        with ExitStack() as stack:
+            stack.enter_context(patch("mkdocs_terok.plugin.File"))
+            mock_qr = stack.enter_context(
+                patch(
+                    "mkdocs_terok.quality_report.generate_quality_report",
+                    return_value=qr_result,
+                )
+            )
+            mock_tm = stack.enter_context(
+                patch("mkdocs_terok.test_map.generate_test_map", return_value="# TM\n")
+            )
+            plugin.on_files(MagicMock(), config=_make_config())
+
+        # QualityReportConfig should have codecov_treemap_path=None, not Path(".")
+        qr_config = mock_qr.call_args[0][0]
+        assert qr_config.codecov_treemap_path is None
+
+        # TestMapConfig should have integration_dir=None, not Path(".")
+        tm_config = mock_tm.call_args[1]["config"]
+        assert tm_config.integration_dir is None
 
 
 # ---------------------------------------------------------------------------
