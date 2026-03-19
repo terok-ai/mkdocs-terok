@@ -22,6 +22,6 @@ def test_mermaid_zoom_js_path_exists():
 
 def test_mermaid_zoom_js_has_spdx_header():
     """The shipped JS asset contains a valid SPDX header."""
-    text = mermaid_zoom_js_path().read_text()
+    text = mermaid_zoom_js_path().read_text(encoding="utf-8")
     assert "SPDX-License-Identifier" in text
     assert "SPDX-FileCopyrightText" in text
