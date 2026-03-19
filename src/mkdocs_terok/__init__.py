@@ -5,8 +5,8 @@
 
 Provides reusable modules for CI maps, test maps, quality reports,
 API reference pages, and Pydantic config reference rendering.
-No runtime dependency on mkdocs or mkdocs-gen-files — each module
-produces strings/results that consumers wrap in thin shims.
+The ``terok`` MkDocs plugin wraps all generators; individual modules
+remain usable standalone (they never import mkdocs themselves).
 """
 
 from __future__ import annotations

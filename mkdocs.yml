@@ -19,12 +19,20 @@ theme:
 
 plugins:
   - search
+  - terok:
+      ci_map: true
+      quality_report: true
+      test_map: true
+      test_map_show_markers: false
+      test_map_title: "Test Suite Map"
+      test_map_integration_dir: tests
+      ref_pages: true
+      ref_pages_skip_patterns:
+        - __main__
+        - resources
+        - _assets
   - gen-files:
       scripts:
-        - docs/gen_ref_pages.py
-        - docs/gen_ci_map.py
-        - docs/gen_quality_report.py
-        - docs/gen_test_map.py
         - docs/gen_config_reference.py
   - literate-nav:
       nav_file: SUMMARY.md
@@ -34,9 +42,6 @@ plugins:
           options:
             show_source: true
             show_root_heading: true
-
-extra_css:
-  - _assets/extra.css
 
 nav:
   - Home: index.md

@@ -29,6 +29,10 @@ include = [
 [tool.poetry.dependencies]
 python = ">=3.12,<4.0"
 PyYAML = ">=6.0"
+mkdocs = ">=1.6,<2"
+
+[tool.poetry.plugins."mkdocs.plugins"]
+terok = "mkdocs_terok.plugin:TerokPlugin"
 
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.8"
@@ -52,7 +56,6 @@ addopts = "-v --tb=short"
 optional = true
 
 [tool.poetry.group.docs.dependencies]
-mkdocs = ">=1.6"
 mkdocs-material = ">=9.5"
 mkdocs-gen-files = ">=0.5"
 mkdocs-literate-nav = ">=0.6"

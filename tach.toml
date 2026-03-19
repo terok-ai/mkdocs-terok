@@ -1,15 +1,21 @@
 exact = true
 source_roots = ["src"]
 
-# Shared MkDocs documentation generators
+# Generators (no mkdocs import)
 [[modules]]
 path = "mkdocs_terok"
 depends_on = []
+
+# Plugin (imports mkdocs + generators)
+[[modules]]
+path = "mkdocs_terok.plugin"
+depends_on = [{ path = "mkdocs_terok" }]
 
 [[interfaces]]
 from = ["mkdocs_terok"]
 expose = [
   "brand_css_path",
+  "mermaid_zoom_js_path",
   "ci_map",
   "ci_map.load_workflows",
   "ci_map.generate_ci_map",
@@ -28,4 +34,11 @@ expose = [
   "config_reference.render_model_tables",
   "config_reference.render_yaml_example",
   "config_reference.render_json_schema",
+]
+
+[[interfaces]]
+from = ["mkdocs_terok.plugin"]
+expose = [
+  "TerokPlugin",
+  "TerokPluginConfig",
 ]
