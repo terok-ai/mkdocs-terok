@@ -1,5 +1,7 @@
 # mkdocs-terok
 
+[![License: 0BSD](https://img.shields.io/badge/License-0BSD-green.svg)](https://opensource.org/license/0bsd)
+[![REUSE](https://api.reuse.software/badge/github.com/terok-ai/mkdocs-terok)](https://api.reuse.software/info/github.com/terok-ai/mkdocs-terok)
 [![codecov](https://codecov.io/gh/terok-ai/mkdocs-terok/graph/badge.svg)](https://codecov.io/gh/terok-ai/mkdocs-terok)
 
 Shared MkDocs documentation generators for terok projects.
