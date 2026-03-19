@@ -213,6 +213,36 @@ class TestOnFilesQualityReport:
         # use_directory_urls=False → companion at treemap.svg (same directory as report root)
         assert "treemap.svg" in uris
 
+    def test_companion_path_index_md_report(self) -> None:
+        """Companion files for index.md reports should use parent dir, not index/."""
+        plugin = _make_plugin(quality_report=True, quality_report_path="reports/index.md")
+        config = _make_config(use_directory_urls=True)
+        files = MagicMock()
+        appended: list[object] = []
+        files.append = appended.append
+
+        mock_result = SimpleNamespace(
+            markdown="# QR\n",
+            companion_files={"treemap.svg": "<svg/>"},
+        )
+
+        with (
+            patch("mkdocs_terok.plugin.File") as mock_file,
+            patch(
+                "mkdocs_terok.quality_report.generate_quality_report",
+                return_value=mock_result,
+            ),
+        ):
+            mock_file.generated = MagicMock(
+                side_effect=lambda cfg, uri, **kw: SimpleNamespace(src_uri=uri, **kw)
+            )
+            plugin.on_files(files, config=config)
+
+        uris = [f.src_uri for f in appended if hasattr(f, "src_uri")]
+        # index.md → companion should be at reports/treemap.svg, NOT reports/index/treemap.svg
+        assert "reports/treemap.svg" in uris
+        assert "reports/index/treemap.svg" not in uris
+
 
 class TestOnFilesTestMap:
     """Test map generation via on_files."""

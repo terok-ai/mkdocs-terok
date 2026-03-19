@@ -11,7 +11,7 @@ Asset injection (CSS / JS) is handled automatically via ``on_config``.
 from __future__ import annotations
 
 import logging
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 from mkdocs.config import config_options as c
 from mkdocs.config.base import Config
@@ -48,6 +48,8 @@ class TerokPluginConfig(Config):
     quality_report_file_level_loc = c.Type(bool, default=True)
     quality_report_include_layer_overview = c.Type(bool, default=False)
     quality_report_include_graph_coarsening = c.Type(bool, default=False)
+    quality_report_codecov_treemap_path = c.Optional(c.Type(str))
+    quality_report_codecov_repo = c.Type(str, default="")
     quality_report_src_label = c.Type(str, default="Source")
     quality_report_tests_label = c.Type(str, default="Tests")
 
@@ -125,6 +127,11 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
         """Emit quality report page and companion files (e.g. treemap SVGs)."""
         from mkdocs_terok.quality_report import QualityReportConfig, generate_quality_report
 
+        codecov_treemap_path = (
+            Path(self.config.quality_report_codecov_treemap_path)
+            if self.config.quality_report_codecov_treemap_path is not None
+            else None
+        )
         qr_config = QualityReportConfig(
             complexity_threshold=self.config.quality_report_complexity_threshold,
             graph_depth=self.config.quality_report_graph_depth,
@@ -132,6 +139,8 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
             file_level_loc=self.config.quality_report_file_level_loc,
             include_layer_overview=self.config.quality_report_include_layer_overview,
             include_graph_coarsening=self.config.quality_report_include_graph_coarsening,
+            codecov_treemap_path=codecov_treemap_path,
+            codecov_repo=self.config.quality_report_codecov_repo,
             src_label=self.config.quality_report_src_label,
             tests_label=self.config.quality_report_tests_label,
         )
@@ -139,19 +148,18 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
         report_path = self.config.quality_report_path
         files.append(File.generated(config, report_path, content=result.markdown))
 
+        report_posix = PurePosixPath(report_path)
         for name, content in result.companion_files.items():
-            if config.use_directory_urls:
-                companion_uri = str(PurePosixPath(report_path).with_suffix("") / name)
+            if config.use_directory_urls and report_posix.stem != "index":
+                companion_base = report_posix.with_suffix("")
             else:
-                companion_uri = str(PurePosixPath(report_path).parent / name)
-            files.append(File.generated(config, companion_uri, content=content))
+                companion_base = report_posix.parent
+            files.append(File.generated(config, str(companion_base / name), content=content))
 
         log.info("Generated %s", report_path)
 
     def _generate_test_map(self, files: Files, config: MkDocsConfig) -> None:
         """Emit a virtual test map page from pytest collection."""
-        from pathlib import Path
-
         from mkdocs_terok.test_map import TestMapConfig, generate_test_map
 
         integration_dir = (
