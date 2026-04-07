@@ -428,24 +428,37 @@ def test_generate_module_map_with_tach(tmp_path: Path, monkeypatch: pytest.Monke
 
 def test_classify_waypoint_from_docstring() -> None:
     """Modules whose docstring contains delegation language are waypoints."""
-    assert _classify("Public API facade. Delegates to collaborators.", [], 0) == FileType.WAYPOINT
-    assert _classify("Waypoint for the nft subsystem.", [], 0) == FileType.WAYPOINT
-    assert _classify("Re-export public symbols.", [], 0) == FileType.WAYPOINT
+    p = Path("mod.py")
+    assert (
+        _classify(p, "Public API facade. Delegates to collaborators.", [], 0) == FileType.WAYPOINT
+    )
+    assert _classify(p, "Waypoint for the nft subsystem.", [], 0) == FileType.WAYPOINT
+    assert _classify(p, "Re-export public symbols.", [], 0) == FileType.WAYPOINT
+
+
+def test_classify_waypoint_from_init() -> None:
+    """__init__.py with a docstring is always classified as waypoint."""
+    init = Path("pkg/__init__.py")
+    assert _classify(init, "Some package.", [], 5) == FileType.WAYPOINT
+    # Without a docstring, __init__.py falls through to default
+    assert _classify(init, "", [], 0) == FileType.NARRATIVE
 
 
 def test_classify_catalog_from_class_count() -> None:
     """Modules with many classes and few functions are catalogs."""
+    p = Path("types.py")
     classes = [("A", "a"), ("B", "b"), ("C", "c"), ("D", "d")]
-    assert _classify("Types module.", classes, 0) == FileType.CATALOG
-    assert _classify("Types module.", classes, 2) == FileType.CATALOG
+    assert _classify(p, "Types module.", classes, 0) == FileType.CATALOG
+    assert _classify(p, "Types module.", classes, 2) == FileType.CATALOG
     # Too many functions → narrative
-    assert _classify("Types module.", classes, 3) == FileType.NARRATIVE
+    assert _classify(p, "Types module.", classes, 3) == FileType.NARRATIVE
 
 
 def test_classify_narrative_default() -> None:
     """Modules that match no special pattern default to narrative."""
-    assert _classify("Regular module.", [("Foo", "foo")], 5) == FileType.NARRATIVE
-    assert _classify("", [], 0) == FileType.NARRATIVE
+    p = Path("mod.py")
+    assert _classify(p, "Regular module.", [("Foo", "foo")], 5) == FileType.NARRATIVE
+    assert _classify(p, "", [], 0) == FileType.NARRATIVE
 
 
 # ── Renderers ──────────────────────────────────────────

@@ -256,14 +256,19 @@ _WAYPOINT_SIGNALS = frozenset(
 )
 
 
-def _classify(module_doc: str, classes: list[tuple[str, str]], func_count: int) -> FileType:
+def _classify(
+    path: Path, module_doc: str, classes: list[tuple[str, str]], func_count: int
+) -> FileType:
     """Classify a module as narrative, catalog, or waypoint.
 
     Heuristics (not assertions):
-    - Waypoint: module docstring contains delegation/facade language
+    - Waypoint: ``__init__.py`` with a docstring, or docstring contains
+      delegation/facade language
     - Catalog: many types (>= 4), few public functions (<= 2)
     - Narrative: everything else
     """
+    if path.name == "__init__.py" and module_doc:
+        return FileType.WAYPOINT
     doc_lower = module_doc.lower()
     if any(signal in doc_lower for signal in _WAYPOINT_SIGNALS):
         return FileType.WAYPOINT
@@ -425,7 +430,7 @@ def _render_module(pkg_root: Path, path: Path, *, depth: int = 3) -> str | None:
     if not module_doc and not classes:
         return None
 
-    file_type = _classify(module_doc, classes, func_count)
+    file_type = _classify(path, module_doc, classes, func_count)
     renderer = _RENDERERS[file_type]
     return renderer(label, module_doc, classes, depth=depth)
 
