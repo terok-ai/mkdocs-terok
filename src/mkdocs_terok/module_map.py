@@ -88,7 +88,7 @@ def _discover_layers(
         tach = _parse_tach(tach_path) if tach_path else _read_tach_config(src_root)
         if tach:
             tach_src = _resolve_tach_src_root(tach)
-            return _group_by_tach(py_files, src_root, tach), tach_src
+            return _group_by_tach(py_files, tach), tach_src
     return _group_by_directory(py_files, pkg_root), pkg_root
 
 
@@ -156,7 +156,8 @@ def _parse_tach(path: Path) -> _TachConfig | None:
         if mod_path and layer:
             module_layers[mod_path] = layer
 
-    source_roots = data.get("source_roots", ["."])
+    raw_roots = data.get("source_roots", ["."])
+    source_roots = raw_roots if isinstance(raw_roots, list) else ["."]
     return _TachConfig(
         layers=layers,
         module_layers=module_layers,
@@ -180,7 +181,6 @@ def _resolve_tach_src_root(tach: _TachConfig) -> Path:
 
 def _group_by_tach(
     py_files: list[Path],
-    src_root: Path,
     tach: _TachConfig,
 ) -> list[tuple[str, list[Path]]]:
     """Assign files to tach layers and order by the ``layers`` list.

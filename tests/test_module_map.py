@@ -267,7 +267,7 @@ def test_group_by_tach_unassigned_files(tmp_path: Path) -> None:
         config_dir=tmp_path,
     )
     py_files = _collect_py_files(pkg)
-    layers = _group_by_tach(py_files, src, tach)
+    layers = _group_by_tach(py_files, tach)
     layer_names = [name for name, _files in layers]
 
     assert "(other)" in layer_names
@@ -294,7 +294,7 @@ def test_group_by_tach_orders_by_layer(tmp_path: Path) -> None:
         config_dir=tmp_path,
     )
     py_files = _collect_py_files(pkg)
-    layers = _group_by_tach(py_files, src, tach)
+    layers = _group_by_tach(py_files, tach)
     layer_names = [name for name, _files in layers]
 
     assert layer_names == ["common", "core", "support", "cli"]
