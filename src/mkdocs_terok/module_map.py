@@ -215,7 +215,10 @@ def _group_by_tach(
 
 def _file_to_layer(path: Path, src_root: Path, tach: _TachConfig) -> str | None:
     """Determine which tach layer a file belongs to via longest-prefix match."""
-    rel = path.relative_to(src_root)
+    try:
+        rel = path.relative_to(src_root)
+    except ValueError:
+        return None
     parts = rel.with_suffix("").parts
     if parts and parts[-1] == "__init__":
         parts = parts[:-1]
@@ -472,11 +475,12 @@ def _render_catalog(
     parts: list[str] = [f"{hashes} `{label}` *(catalog)*\n"]
     if module_doc:
         parts.append(f"{module_doc}\n")
-    if classes:
+    documented = [(name, doc) for name, doc in classes if doc]
+    if documented:
         parts.append("| Type | Description |")
         parts.append("|------|-------------|")
-        for cls_name, cls_doc in classes:
-            first_line = cls_doc.split("\n", 1)[0] if cls_doc else ""
+        for cls_name, cls_doc in documented:
+            first_line = cls_doc.split("\n", 1)[0]
             parts.append(f"| `{cls_name}` | {first_line} |")
         parts.append("")
     return "\n".join(parts)
@@ -494,10 +498,11 @@ def _render_waypoint(
     parts: list[str] = [f"{hashes} `{label}` *(waypoint)*\n"]
     if module_doc:
         parts.append(f"{module_doc}\n")
-    for cls_name, cls_doc in classes:
-        first_line = cls_doc.split("\n", 1)[0] if cls_doc else ""
+    documented = [(name, doc) for name, doc in classes if doc]
+    for cls_name, cls_doc in documented:
+        first_line = cls_doc.split("\n", 1)[0]
         parts.append(f"- **{cls_name}** — {first_line}")
-    if classes:
+    if documented:
         parts.append("")
     return "\n".join(parts)
 
