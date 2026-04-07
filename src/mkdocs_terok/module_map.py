@@ -36,7 +36,11 @@ def generate_module_map(config: ModuleMapConfig | None = None) -> str:
     by architectural layer.
     """
     cfg = config or ModuleMapConfig()
-    pkg_root = _detect_package_root(cfg.src_root)
+    pkg_root = (
+        cfg.src_root
+        if (cfg.src_root / "__init__.py").is_file()
+        else _detect_package_root(cfg.src_root)
+    )
     layers, label_root = _discover_layers(
         cfg.src_root, pkg_root, tach_path=cfg.tach_path, no_tach=cfg.no_tach
     )
@@ -85,7 +89,12 @@ def _discover_layers(
     """
     py_files = _collect_py_files(pkg_root)
     if not no_tach:
-        tach = _parse_tach(tach_path) if tach_path else _read_tach_config(src_root)
+        if tach_path:
+            tach = _parse_tach(tach_path)
+            if tach is None:
+                raise ValueError(f"Could not load tach config: {tach_path}")
+        else:
+            tach = _read_tach_config(src_root)
         if tach:
             tach_src = _resolve_tach_src_root(tach)
             return _group_by_tach(py_files, tach), tach_src
@@ -327,8 +336,9 @@ def _domain_groups(paths: list[Path], pkg_root: Path) -> list[tuple[str, list[Pa
     (e.g. ``nft/constants`` at foundation AND ``nft/rules`` at core),
     they are grouped under the domain name for contiguous rendering.
 
-    Returns ``[("", paths)]`` when grouping is unnecessary (all files
-    share one domain or none qualify).
+    Returns ``[("", paths)]`` when visual grouping is unnecessary:
+    no subpackages exist, all files share one domain, or only one
+    non-trivial group would be shown.
     """
     # Identify domain packages: paths with at least two components
     known_domains: set[str] = set()
