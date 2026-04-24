@@ -156,7 +156,7 @@ jobs:
         run: poetry install --with docs --no-interaction
 
       - name: Build documentation
-        run: poetry run mkdocs build --strict
+        run: poetry run properdocs build --strict
 
       - name: Upload docs artifact
         if: github.event_name == 'pull_request'

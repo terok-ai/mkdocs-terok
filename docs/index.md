@@ -1,10 +1,10 @@
 # mkdocs-terok
 
-Shared MkDocs documentation generators for terok projects.
+Shared [ProperDocs](https://properdocs.org/) documentation generators for terok projects.
 
 ## Overview
 
-`mkdocs-terok` ships a **`terok` MkDocs plugin** that drives all built-in
+`mkdocs-terok` ships a **`terok` ProperDocs plugin** that drives all built-in
 generators automatically — no shim scripts required. For advanced or
 consumer-specific use cases the generator modules remain public and can be
 called directly via [`mkdocs-gen-files`](https://github.com/oprypin/mkdocs-gen-files).
@@ -12,7 +12,7 @@ called directly via [`mkdocs-gen-files`](https://github.com/oprypin/mkdocs-gen-f
 ## Quick start — plugin
 
 ```yaml
-# mkdocs.yml
+# properdocs.yml
 plugins:
   - search
   - terok:
@@ -36,15 +36,15 @@ from mkdocs_terok.ci_map import generate_ci_map
 markdown = generate_ci_map()
 ```
 
-The generators have **no runtime dependency on MkDocs** — they handle content
-generation only.
+The generators have **no runtime dependency on the doc engine** — they handle
+content generation only.
 
 ## Modules
 
 | Module | Purpose |
 |--------|---------|
 | `mkdocs_terok` | Package root — exports `brand_css_path()` and `mermaid_zoom_js_path()` |
-| `mkdocs_terok.plugin` | MkDocs `BasePlugin` wrapping all generators |
+| `mkdocs_terok.plugin` | ProperDocs `BasePlugin` wrapping all generators |
 | `mkdocs_terok.ref_pages` | Generate API reference pages from source tree |
 | `mkdocs_terok.ci_map` | Parse and visualize GitHub Actions workflows |
 | `mkdocs_terok.quality_report` | Code quality analysis — optionally parses output from [scc](https://github.com/boyter/scc), [complexipy](https://github.com/rohaquinern/complexipy), [tach](https://github.com/gauge-sh/tach), [vulture](https://github.com/jendrikseipp/vulture), and [docstr-coverage](https://github.com/HunterMcGushion/docstr_coverage) (sections degrade gracefully when tools are absent) |

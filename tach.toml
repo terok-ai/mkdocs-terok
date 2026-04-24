@@ -1,12 +1,12 @@
 exact = true
 source_roots = ["src"]
 
-# Generators (no mkdocs import)
+# Generators (no doc-engine import)
 [[modules]]
 path = "mkdocs_terok"
 depends_on = []
 
-# Plugin (imports mkdocs + generators)
+# Plugin (imports properdocs + generators)
 [[modules]]
 path = "mkdocs_terok.plugin"
 depends_on = [{ path = "mkdocs_terok" }]

@@ -70,7 +70,7 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Build documentation
-        run: poetry run mkdocs build --strict
+        run: poetry run properdocs build --strict
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5

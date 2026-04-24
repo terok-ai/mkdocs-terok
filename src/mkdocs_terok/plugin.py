@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Jiri Vyskocil
 # SPDX-License-Identifier: 0BSD
 
-"""MkDocs plugin that wraps mkdocs-terok generators into a single ``terok`` plugin.
+"""ProperDocs plugin that wraps mkdocs-terok generators into a single ``terok`` plugin.
 
 Adds ``File.generated()`` entries for CI maps, quality reports, test maps, module
 maps, and API reference pages — eliminating the need for ``mkdocs-gen-files`` shim
@@ -14,15 +14,15 @@ from __future__ import annotations
 import logging
 from pathlib import Path, PurePosixPath
 
-from mkdocs.config import config_options as c
-from mkdocs.config.base import Config
-from mkdocs.config.defaults import MkDocsConfig
-from mkdocs.plugins import BasePlugin
-from mkdocs.structure.files import File, Files
+from properdocs.config import config_options as c
+from properdocs.config.base import Config
+from properdocs.config.defaults import ProperDocsConfig
+from properdocs.plugins import BasePlugin
+from properdocs.structure.files import File, Files
 
 from mkdocs_terok import brand_css_path, mermaid_zoom_js_path
 
-log = logging.getLogger(f"mkdocs.plugins.{__name__}")
+log = logging.getLogger(f"properdocs.plugins.{__name__}")
 _LOG_GENERATED = "Generated %s"
 
 # ---------------------------------------------------------------------------
@@ -31,7 +31,7 @@ _LOG_GENERATED = "Generated %s"
 
 
 class TerokPluginConfig(Config):
-    """Typed MkDocs configuration for the ``terok`` plugin."""
+    """Typed ProperDocs configuration for the ``terok`` plugin."""
 
     # Asset injection
     inject_css = c.Type(bool, default=True)
@@ -79,9 +79,9 @@ class TerokPluginConfig(Config):
 
 
 class TerokPlugin(BasePlugin[TerokPluginConfig]):
-    """MkDocs plugin that drives mkdocs-terok generators."""
+    """ProperDocs plugin that drives mkdocs-terok generators."""
 
-    def on_config(self, config: MkDocsConfig) -> MkDocsConfig:
+    def on_config(self, config: ProperDocsConfig) -> ProperDocsConfig:
         """Inject brand CSS and Mermaid zoom JS into the site configuration."""
         css_uri = "_assets/extra.css"
         js_uri = "_assets/mermaid_zoom.js"
@@ -96,7 +96,7 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
 
         return config
 
-    def on_files(self, files: Files, /, *, config: MkDocsConfig) -> Files:
+    def on_files(self, files: Files, /, *, config: ProperDocsConfig) -> Files:
         """Generate virtual files for each enabled generator."""
         if self.config.inject_css:
             files.append(
@@ -124,7 +124,7 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
 
     # -- private generators -------------------------------------------------
 
-    def _generate_ci_map(self, files: Files, config: MkDocsConfig) -> None:
+    def _generate_ci_map(self, files: Files, config: ProperDocsConfig) -> None:
         """Emit a virtual CI map page from GitHub Actions workflows."""
         from mkdocs_terok.ci_map import generate_ci_map
 
@@ -132,7 +132,7 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
         files.append(File.generated(config, self.config.ci_map_path, content=markdown))
         log.info(_LOG_GENERATED, self.config.ci_map_path)
 
-    def _generate_quality_report(self, files: Files, config: MkDocsConfig) -> None:
+    def _generate_quality_report(self, files: Files, config: ProperDocsConfig) -> None:
         """Emit quality report page and companion files (e.g. treemap SVGs)."""
         from mkdocs_terok.quality_report import QualityReportConfig, generate_quality_report
 
@@ -170,7 +170,7 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
 
         log.info(_LOG_GENERATED, report_path)
 
-    def _generate_test_map(self, files: Files, config: MkDocsConfig) -> None:
+    def _generate_test_map(self, files: Files, config: ProperDocsConfig) -> None:
         """Emit a virtual test map page from pytest collection."""
         from mkdocs_terok.test_map import TestMapConfig, generate_test_map
 
@@ -188,7 +188,7 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
         files.append(File.generated(config, self.config.test_map_path, content=markdown))
         log.info(_LOG_GENERATED, self.config.test_map_path)
 
-    def _generate_module_map(self, files: Files, config: MkDocsConfig) -> None:
+    def _generate_module_map(self, files: Files, config: ProperDocsConfig) -> None:
         """Emit a virtual module map page from source docstrings."""
         from mkdocs_terok.module_map import ModuleMapConfig, generate_module_map
 
@@ -197,7 +197,7 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
         files.append(File.generated(config, self.config.module_map_path, content=markdown))
         log.info(_LOG_GENERATED, self.config.module_map_path)
 
-    def _generate_ref_pages(self, files: Files, config: MkDocsConfig) -> None:
+    def _generate_ref_pages(self, files: Files, config: ProperDocsConfig) -> None:
         """Emit API reference stubs and a literate-nav SUMMARY.md."""
         from mkdocs_terok.ref_pages import RefPagesConfig, generate_ref_pages
 

@@ -53,11 +53,11 @@ clean:
 
 # Build documentation site
 docs:
-	poetry run mkdocs build --strict
+	poetry run properdocs build --strict
 
 # Serve documentation locally with live reload
 docs-serve:
-	poetry run mkdocs serve
+	poetry run properdocs serve
 
 # Add SPDX header to files.
 spdx:

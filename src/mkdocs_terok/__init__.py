@@ -1,12 +1,12 @@
 # SPDX-FileCopyrightText: 2026 Jiri Vyskocil
 # SPDX-License-Identifier: 0BSD
 
-"""Shared MkDocs documentation generators for terok projects.
+"""Shared ProperDocs documentation generators for terok projects.
 
 Provides reusable modules for CI maps, test maps, quality reports,
 API reference pages, and Pydantic config reference rendering.
-The ``terok`` MkDocs plugin wraps all generators; individual modules
-remain usable standalone (they never import mkdocs themselves).
+The ``terok`` ProperDocs plugin wraps all generators; individual modules
+remain usable standalone (they never import properdocs themselves).
 """
 
 from __future__ import annotations
