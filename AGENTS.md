@@ -2,8 +2,13 @@
 
 ## Purpose
 
-`mkdocs-terok` provides shared MkDocs documentation generators for terok projects.
+`mkdocs-terok` provides shared ProperDocs documentation generators for terok projects.
 It produces strings/results that consumers wrap in thin mkdocs-gen-files shims.
+
+The package name stays `mkdocs-terok` for install-path stability; internally the
+plugin imports from `properdocs.*`. ProperDocs' plugin loader reads both
+`mkdocs.plugins` and `properdocs.plugins` entry-point groups, so the
+`[tool.poetry.plugins."mkdocs.plugins"]` declaration is preserved intentionally.
 
 ## Technology Stack
 
@@ -32,4 +37,6 @@ make check      # Run lint + test + docstrings + deadcode + reuse
 - **Type hints**: Use Python 3.12+ type hints
 - **Docstrings**: Required for all public functions, classes, and modules (95% min)
 - **SPDX headers**: Every `.py` file must have an SPDX header
-- **No runtime dependency on mkdocs**: Library produces strings; consumers handle I/O
+- **No runtime dependency on the doc engine in generator modules**: Only
+  `plugin.py` imports `properdocs`; each generator module produces strings and
+  consumers handle I/O

@@ -4,12 +4,12 @@
 [![REUSE](https://api.reuse.software/badge/github.com/terok-ai/mkdocs-terok)](https://api.reuse.software/info/github.com/terok-ai/mkdocs-terok)
 [![codecov](https://codecov.io/gh/terok-ai/mkdocs-terok/graph/badge.svg)](https://codecov.io/gh/terok-ai/mkdocs-terok)
 
-Shared MkDocs documentation generators for terok projects.
+Shared [ProperDocs](https://properdocs.org/) documentation generators for terok projects.
 
 Provides reusable modules for generating CI workflow maps, integration test maps,
 code quality reports, API reference pages, and config reference documentation from
-Pydantic models. A built-in `terok` MkDocs plugin drives all generators
-automatically; the generator modules themselves never import MkDocs and can
+Pydantic models. A built-in `terok` ProperDocs plugin drives all generators
+automatically; the generator modules themselves never import the doc engine and can
 also be used standalone via `mkdocs-gen-files` shims.
 
 The quality report module can optionally parse output from
