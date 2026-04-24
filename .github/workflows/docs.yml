@@ -70,8 +70,6 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Build documentation
-        env:
-          NO_MKDOCS_2_WARNING: "1"
         run: poetry run properdocs build --strict
 
       - name: Upload artifact

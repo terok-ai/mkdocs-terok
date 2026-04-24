@@ -51,15 +51,13 @@ clean:
 	rm -rf dist/ reports/ site/ .coverage .pytest_cache/ .ruff_cache/
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
-# Build documentation site.
-# NO_MKDOCS_2_WARNING=1 silences mkdocs-material's MkDocs 2.0 notice — we
-# have already migrated to ProperDocs, so the warning no longer applies.
+# Build documentation site
 docs:
-	NO_MKDOCS_2_WARNING=1 poetry run properdocs build --strict
+	poetry run properdocs build --strict
 
 # Serve documentation locally with live reload
 docs-serve:
-	NO_MKDOCS_2_WARNING=1 poetry run properdocs serve
+	poetry run properdocs serve
 
 # Add SPDX header to files.
 spdx:
