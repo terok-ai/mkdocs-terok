@@ -39,6 +39,7 @@ documentation = "https://terok-ai.github.io/mkdocs-terok/"
 python = ">=3.12,<4.0"
 PyYAML = ">=6.0"
 properdocs = ">=1.6.7"
+squarify = ">=0.4"
 
 [tool.poetry.plugins."mkdocs.plugins"]
 terok = "mkdocs_terok.plugin:TerokPlugin"

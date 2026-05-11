@@ -50,7 +50,8 @@ class TerokPluginConfig(Config):
     quality_report_file_level_loc = c.Type(bool, default=True)
     quality_report_include_layer_overview = c.Type(bool, default=False)
     quality_report_include_graph_coarsening = c.Type(bool, default=False)
-    quality_report_codecov_treemap_path = c.Optional(c.Type(str))
+    quality_report_coverage_json_path = c.Optional(c.Type(str))
+    quality_report_treemap_group_depth = c.Type(int, default=3)
     quality_report_codecov_repo = c.Type(str, default="")
     quality_report_src_label = c.Type(str, default="Source")
     quality_report_tests_label = c.Type(str, default="Tests")
@@ -136,9 +137,9 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
         """Emit quality report page and companion files (e.g. treemap SVGs)."""
         from mkdocs_terok.quality_report import QualityReportConfig, generate_quality_report
 
-        codecov_treemap_path = (
-            Path(self.config.quality_report_codecov_treemap_path)
-            if self.config.quality_report_codecov_treemap_path
+        coverage_json_path = (
+            Path(self.config.quality_report_coverage_json_path)
+            if self.config.quality_report_coverage_json_path
             else None
         )
         qr_config = QualityReportConfig(
@@ -148,7 +149,8 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
             file_level_loc=self.config.quality_report_file_level_loc,
             include_layer_overview=self.config.quality_report_include_layer_overview,
             include_graph_coarsening=self.config.quality_report_include_graph_coarsening,
-            codecov_treemap_path=codecov_treemap_path,
+            coverage_json_path=coverage_json_path,
+            treemap_group_depth=self.config.quality_report_treemap_group_depth,
             codecov_repo=self.config.quality_report_codecov_repo,
             src_label=self.config.quality_report_src_label,
             tests_label=self.config.quality_report_tests_label,

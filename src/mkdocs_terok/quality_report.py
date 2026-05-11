@@ -20,7 +20,10 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from html import escape as _xml_escape
 from pathlib import Path
+
+import squarify
 
 _VENV_BIN = Path(sys.executable).parent
 
@@ -46,7 +49,13 @@ class QualityReportConfig:
     graph_depth: int = 3
     vulture_whitelist: Path | None = None
     vulture_min_confidence: int = 80
-    codecov_treemap_path: Path | None = None
+    coverage_json_path: Path | None = None
+    treemap_group_depth: int = 3
+    # codecov_repo is opt-in: when set *and* coverage_json_path is unavailable, the
+    # report embeds Codecov's live treemap URL as a fallback. That image is fetched
+    # by the visitor's browser, so it always reflects Codecov's *latest* master
+    # coverage — it will not match the snapshot of the surrounding page if the page
+    # was built from an older commit.
     codecov_repo: str = ""
     file_level_loc: bool = True
     include_layer_overview: bool = False
@@ -190,37 +199,208 @@ def generate_quality_report(config: QualityReportConfig | None = None) -> Qualit
 
 
 def _section_coverage_treemap(cfg: QualityReportConfig) -> tuple[str, dict[str, str]]:
-    """Generate the coverage treemap embed and return (markdown, companion_files)."""
+    """Generate the coverage treemap embed and return (markdown, companion_files).
+
+    Priority:
+        1. If ``coverage_json_path`` resolves to a Coverage.py JSON report, render
+           a static SVG treemap locally and bundle it as a companion file.
+        2. Else, if ``codecov_repo`` is set, embed Codecov's live ``tree.svg`` URL.
+           This is fetched fresh by the visitor's browser, so it shows Codecov's
+           latest master coverage — *not* the snapshot the surrounding page was
+           built from.
+        3. Else, emit an admonition explaining the section is unavailable.
+    """
     companion: dict[str, str] = {}
 
-    resolved_treemap = cfg._resolve_optional(cfg.codecov_treemap_path)
-    if resolved_treemap and resolved_treemap.is_file():
-        svg = resolved_treemap.read_text(encoding="utf-8")
+    resolved_cov = cfg._resolve_optional(cfg.coverage_json_path)
+    if resolved_cov and resolved_cov.is_file():
+        try:
+            data = json.loads(resolved_cov.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return (
+                f"!!! warning\n    Coverage report `{resolved_cov}` is not valid JSON.\n\n",
+                companion,
+            )
+        svg = _render_coverage_treemap_svg(data, group_depth=cfg.treemap_group_depth)
         companion["coverage_treemap.svg"] = svg
-        src = "coverage_treemap.svg"
-    elif cfg.codecov_repo:
-        base = f"https://codecov.io/gh/{cfg.codecov_repo}"
-        src = f"{base}/graphs/tree.svg"
-    else:
-        return (
-            "!!! info\n    Coverage treemap not available (CI downloads it at build time).\n\n",
-            companion,
+        treemap = (
+            '<object id="coverage-treemap-img" type="image/svg+xml" '
+            'data="coverage_treemap.svg"></object>\n\n'
         )
+        totals = data.get("totals", {})
+        total_pct = totals.get("percent_covered")
+        intro = (
+            f"Overall line coverage: **{total_pct:.1f}%** "
+            f"({totals.get('covered_lines', 0)}/{totals.get('num_statements', 0)} statements).\n\n"
+            if isinstance(total_pct, (int, float))
+            else ""
+        )
+        legend = (
+            "Each rectangle is a source file. Area is proportional to the number of "
+            "statements; colour encodes the coverage percentage (green = fully covered, "
+            "red = uncovered). Files are grouped by top-level subdirectory.\n"
+        )
+        return intro + treemap + legend, companion
 
-    treemap = f'<object id="codecov-treemap-img" type="image/svg+xml" data="{src}"></object>\n\n'
-    md = treemap
     if cfg.codecov_repo:
         base = f"https://codecov.io/gh/{cfg.codecov_repo}"
+        live_src = f"{base}/graphs/tree.svg"
+        treemap = (
+            f'<object id="codecov-treemap-img" type="image/svg+xml" data="{live_src}"></object>\n\n'
+        )
         md = (
-            f"Coverage is collected from unit tests in CI and uploaded to "
-            f"[Codecov]({base}).\n\n"
+            f"Coverage is uploaded to [Codecov]({base}). The treemap below is fetched "
+            f"live from Codecov, so it always reflects the latest master coverage — "
+            f"this may differ from the snapshot the rest of this page was built from.\n\n"
             "### Coverage Treemap\n\n"
             + treemap
             + "Each rectangle represents a source file. Size is proportional to the "
             "number of lines; colour shows the coverage percentage (green = high, "
             "red = low).\n"
         )
-    return md, companion
+        return md, companion
+
+    return (
+        "!!! info\n    Coverage treemap not available "
+        "(no `coverage.json` was produced for this build).\n\n",
+        companion,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Local coverage treemap SVG generation
+# ---------------------------------------------------------------------------
+
+
+_TREEMAP_WIDTH = 1000
+_TREEMAP_HEIGHT = 600
+_GROUP_LABEL_HEIGHT = 14
+_GROUP_PAD = 2
+
+
+def _render_coverage_treemap_svg(coverage_data: dict, *, group_depth: int) -> str:
+    """Render a coverage.py JSON report as an SVG treemap.
+
+    Files are sized by ``summary.num_statements`` and coloured by
+    ``summary.percent_covered``. Files are grouped into rectangles by the first
+    ``group_depth`` segments of their path (capped to keep the file itself out
+    of the group key).
+    """
+    items = [
+        (path, summary.get("num_statements", 0), float(summary.get("percent_covered", 0.0)))
+        for path, fdata in coverage_data.get("files", {}).items()
+        if isinstance(summary := fdata.get("summary"), dict)
+        and summary.get("num_statements", 0) > 0
+    ]
+    if not items:
+        return _empty_treemap_svg("No coverage data")
+
+    groups: dict[str, list[tuple[str, int, float]]] = defaultdict(list)
+    for path, size, pct in items:
+        parts = path.split("/")
+        depth = max(1, min(group_depth, len(parts) - 1))
+        groups["/".join(parts[:depth])].append((path, size, pct))
+
+    group_totals = sorted(
+        ((name, sum(s for _, s, _ in entries)) for name, entries in groups.items()),
+        key=lambda gt: gt[1],
+        reverse=True,
+    )
+    group_rects = squarify.squarify(
+        squarify.normalize_sizes(
+            [total for _, total in group_totals], _TREEMAP_WIDTH, _TREEMAP_HEIGHT
+        ),
+        0,
+        0,
+        _TREEMAP_WIDTH,
+        _TREEMAP_HEIGHT,
+    )
+
+    svg: list[str] = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {_TREEMAP_WIDTH} '
+        f'{_TREEMAP_HEIGHT}" font-family="-apple-system,BlinkMacSystemFont,sans-serif">',
+        f'<rect width="{_TREEMAP_WIDTH}" height="{_TREEMAP_HEIGHT}" fill="#fafafa"/>',
+    ]
+
+    for (gname, _gtotal), grect in zip(group_totals, group_rects, strict=True):
+        svg.extend(_render_group(gname, groups[gname], grect))
+
+    svg.append("</svg>\n")
+    return "\n".join(svg)
+
+
+def _render_group(
+    name: str, files: list[tuple[str, int, float]], rect: dict[str, float]
+) -> list[str]:
+    """Render one group rectangle and its child file rectangles."""
+    gx, gy, gw, gh = rect["x"], rect["y"], rect["dx"], rect["dy"]
+    label_h = _GROUP_LABEL_HEIGHT if gh > 30 else 0
+    inner_x = gx + _GROUP_PAD
+    inner_y = gy + label_h
+    inner_w = max(1.0, gw - 2 * _GROUP_PAD)
+    inner_h = max(1.0, gh - label_h - _GROUP_PAD)
+
+    files_sorted = sorted(files, key=lambda f: f[1], reverse=True)
+    file_rects = squarify.squarify(
+        squarify.normalize_sizes([s for _, s, _ in files_sorted], inner_w, inner_h),
+        inner_x,
+        inner_y,
+        inner_w,
+        inner_h,
+    )
+
+    out: list[str] = [
+        f'<g><rect x="{gx:.1f}" y="{gy:.1f}" width="{gw:.1f}" height="{gh:.1f}" '
+        f'fill="#e8e8e8" stroke="#333" stroke-width="1.5"/>',
+    ]
+    if label_h:
+        out.append(
+            f'<text x="{gx + 4:.1f}" y="{gy + 11:.1f}" font-size="11" '
+            f'fill="#222" font-weight="600">{_xml_escape(name)}</text>'
+        )
+
+    for (path, size, pct), frect in zip(files_sorted, file_rects, strict=True):
+        out.append(_render_file_rect(path, size, pct, frect))
+
+    out.append("</g>")
+    return out
+
+
+def _render_file_rect(path: str, size: int, pct: float, rect: dict[str, float]) -> str:
+    """Render one file's rectangle with colour, tooltip, and optional label."""
+    x, y, w, h = rect["x"], rect["y"], rect["dx"], rect["dy"]
+    fname = path.rsplit("/", 1)[-1]
+    tooltip = f"{path} — {pct:.1f}% ({size} stmts)"
+    rect_svg = (
+        f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" '
+        f'fill="{_coverage_color(pct)}" stroke="#fff" stroke-width="0.5">'
+        f"<title>{_xml_escape(tooltip)}</title></rect>"
+    )
+    if w > 40 and h > 12:
+        label = _xml_escape(fname[: max(1, int(w / 6))])
+        rect_svg += (
+            f'<text x="{x + 2:.1f}" y="{y + 10:.1f}" font-size="9" '
+            f'fill="#111" pointer-events="none">{label}</text>'
+        )
+    return rect_svg
+
+
+def _coverage_color(pct: float) -> str:
+    """Map coverage percentage to an HSL colour (red→yellow→green)."""
+    pct = max(0.0, min(100.0, pct))
+    hue = pct * 1.2  # 0 → red, 120 → green
+    return f"hsl({hue:.0f},65%,55%)"
+
+
+def _empty_treemap_svg(message: str) -> str:
+    """Render a placeholder SVG when no coverage data is available."""
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {_TREEMAP_WIDTH} '
+        f'{_TREEMAP_HEIGHT}"><rect width="{_TREEMAP_WIDTH}" height="{_TREEMAP_HEIGHT}" '
+        f'fill="#fafafa"/><text x="{_TREEMAP_WIDTH // 2}" y="{_TREEMAP_HEIGHT // 2}" '
+        f'text-anchor="middle" font-family="sans-serif" font-size="20" '
+        f'fill="#666">{_xml_escape(message)}</text></svg>\n'
+    )
 
 
 def _section_loc(cfg: QualityReportConfig) -> str:
