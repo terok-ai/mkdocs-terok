@@ -24,6 +24,8 @@ concurrency:
 jobs:
   no-git-deps:
     uses: ./.github/workflows/no-git-deps.yml
+    permissions:
+      contents: read
 
   build:
     needs: no-git-deps
