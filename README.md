@@ -23,10 +23,11 @@ gracefully to a warning admonition.
 
 ## Installation
 
+Add to your project's `pyproject.toml` as a docs-build dependency:
+
 ```toml
-# In your project's pyproject.toml
 [tool.poetry.group.docs.dependencies]
-mkdocs-terok = {url = "https://github.com/terok-ai/mkdocs-terok/releases/download/v0.3.0/mkdocs_terok-0.3.0-py3-none-any.whl"}
+mkdocs-terok = "^0.5"
 ```
 
 ## License
