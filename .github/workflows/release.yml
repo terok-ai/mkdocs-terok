@@ -10,7 +10,7 @@ on:
       target:
         description: "What to publish"
         type: choice
-        options: [pypi, testpypi, gh-only]
+        options: [pypi, testpypi]
         default: pypi
 
 # Empty default; each job re-grants only what it needs.
