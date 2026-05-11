@@ -57,9 +57,7 @@ jobs:
 
   github-release:
     needs: build
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'gh-only')
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -84,9 +82,7 @@ jobs:
 
   pypi-publish:
     needs: build
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi')
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'pypi'
     runs-on: ubuntu-latest
     environment: pypi   # OIDC subject narrowing + required-reviewer gate
     permissions:
