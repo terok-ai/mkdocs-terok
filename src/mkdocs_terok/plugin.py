@@ -100,7 +100,7 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
     def on_files(self, files: Files, /, *, config: ProperDocsConfig) -> Files:
         """Generate virtual files for each enabled generator.
 
-        When [`INVENTORY_ONLY_ENV`][mkdocs_terok.plugin.INVENTORY_ONLY_ENV]
+        When [`INVENTORY_ONLY_ENV`][mkdocs_terok.INVENTORY_ONLY_ENV]
         is set, the four generators that don't feed ``objects.inv``
         (``ci_map``, ``quality_report``, ``test_map``, ``module_map``)
         are skipped, so a stripped-down ``poetry install --only main,docs``
