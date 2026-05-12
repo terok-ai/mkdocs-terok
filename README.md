@@ -44,6 +44,12 @@ uv add --group docs mkdocs-terok
 mkdocs-terok = "^0.6"
 ```
 
+## Configuration
+
+Configured via the `terok` plugin in your `properdocs.yml`.  See this
+repository's own [`properdocs.yml`](properdocs.yml) for a self-documenting
+example that exercises every generator the package ships.
+
 ## License
 
 [0BSD](https://opensource.org/license/0bsd) — use freely, no strings attached.
