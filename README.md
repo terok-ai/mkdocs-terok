@@ -25,12 +25,10 @@ gracefully to a warning admonition.
 
 Add to your project as a docs-build dependency.
 
-**Poetry** — `pyproject.toml` (canonical caret kept in sync with the
-current release by `scripts/check-readme-version.py`):
+**pip**:
 
-```toml
-[tool.poetry.group.docs.dependencies]
-mkdocs-terok = "^0.6"
+```bash
+pip install mkdocs-terok
 ```
 
 **uv**:
@@ -39,10 +37,12 @@ mkdocs-terok = "^0.6"
 uv add --group docs mkdocs-terok
 ```
 
-**pip**:
+**Poetry** — `pyproject.toml` (canonical caret kept in sync with the
+current release by `scripts/check-readme-version.py`):
 
-```bash
-pip install mkdocs-terok
+```toml
+[tool.poetry.group.docs.dependencies]
+mkdocs-terok = "^0.6"
 ```
 
 ## License
