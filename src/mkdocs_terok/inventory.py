@@ -55,21 +55,24 @@ def build_inventory(*, config: Path, output: Path) -> None:
     """Generate ``objects.inv`` for the project at *config*.
 
     Loads *config* as text, removes sibling-terok inventory list entries,
-    writes the patched config to a scratch directory, runs ``properdocs
-    build --no-strict`` into that scratch ``site/`` directory, then copies
+    writes the patched config alongside the original, runs ``properdocs
+    build --no-strict`` into a scratch ``site/`` directory, then copies
     ``site/objects.inv`` to *output*.
 
-    Raises [`SystemExit`][] non-zero if the build fails or the inventory
-    file is not produced.
+    Raises:
+        subprocess.CalledProcessError: the underlying ``properdocs build``
+            failed.  The exception's ``returncode`` carries the exit code.
+        FileNotFoundError: the build completed but no ``objects.inv`` was
+            produced (a ProperDocs configuration bug rather than a build
+            failure).
     """
     patched_text = _strip_sibling_inventory_lines(config.read_text())
 
     # ProperDocs resolves ``docs_dir`` and other relative paths against the
-    # config file's *location*, so the patched copy must live next to the
-    # original — a remote tmpdir would break ``docs/``, ``mkdocs_terok``
-    # script paths, etc.  Use ``NamedTemporaryFile`` with ``delete=False``
-    # so the path is unique (no clash with concurrent builds) and clean up
-    # explicitly via try/finally.
+    # config file's location, so the patched copy must live next to the
+    # original — a remote tmpdir would break ``docs/``, asset paths, etc.
+    # ``NamedTemporaryFile(delete=False)`` plus explicit unlink avoids the
+    # close-time delete that would race the subprocess.
     config_dir = config.parent.resolve()
     with tempfile.NamedTemporaryFile(
         mode="w",
@@ -84,7 +87,7 @@ def build_inventory(*, config: Path, output: Path) -> None:
     try:
         with tempfile.TemporaryDirectory(prefix="mkdocs-terok-inventory-") as tmp:
             site_dir = Path(tmp) / "site"
-            result = subprocess.run(
+            subprocess.run(
                 [
                     "properdocs",
                     "build",
@@ -94,23 +97,11 @@ def build_inventory(*, config: Path, output: Path) -> None:
                     "--site-dir",
                     str(site_dir),
                 ],
-                check=False,
+                check=True,
             )
-            if result.returncode != 0:
-                print(
-                    f"properdocs build failed with exit code {result.returncode}",
-                    file=sys.stderr,
-                )
-                sys.exit(result.returncode)
-
             produced = site_dir / "objects.inv"
             if not produced.is_file():
-                print(
-                    f"objects.inv was not produced at {produced}",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-
+                raise FileNotFoundError(f"objects.inv was not produced at {produced}")
             output.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(produced, output)
     finally:
@@ -152,7 +143,13 @@ def _main(argv: list[str] | None = None) -> None:
         help="Where to write the generated inventory (default: ./objects.inv)",
     )
     args = parser.parse_args(argv)
-    build_inventory(config=args.config, output=args.output)
+    try:
+        build_inventory(config=args.config, output=args.output)
+    except subprocess.CalledProcessError as exc:
+        sys.exit(exc.returncode)
+    except FileNotFoundError as exc:
+        print(exc, file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
