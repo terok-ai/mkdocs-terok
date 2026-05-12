@@ -176,7 +176,7 @@ def test_coverage_treemap_invalid_json_falls_back(tmp_path: Path) -> None:
     (tmp_path / "src").mkdir(exist_ok=True)
     (tmp_path / "tests").mkdir(exist_ok=True)
     result = generate_quality_report(config)
-    assert "not valid JSON" in result.markdown
+    assert "could not be loaded" in result.markdown
     assert "coverage_treemap.svg" not in result.companion_files
 
 

@@ -216,9 +216,9 @@ def _section_coverage_treemap(cfg: QualityReportConfig) -> tuple[str, dict[str, 
     if resolved_cov and resolved_cov.is_file():
         try:
             data = json.loads(resolved_cov.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
+        except (OSError, json.JSONDecodeError) as exc:
             return (
-                f"!!! warning\n    Coverage report `{resolved_cov}` is not valid JSON.\n\n",
+                f"!!! warning\n    Coverage report `{resolved_cov}` could not be loaded: {exc}\n\n",
                 companion,
             )
         svg = _render_coverage_treemap_svg(data, group_depth=cfg.treemap_group_depth)
@@ -235,10 +235,15 @@ def _section_coverage_treemap(cfg: QualityReportConfig) -> tuple[str, dict[str, 
             if isinstance(total_pct, (int, float))
             else ""
         )
+        grouping = (
+            "top-level subdirectory"
+            if cfg.treemap_group_depth == 1
+            else f"the first {cfg.treemap_group_depth} directory levels"
+        )
         legend = (
             "Each rectangle is a source file. Area is proportional to the number of "
             "statements; colour encodes the coverage percentage (green = fully covered, "
-            "red = uncovered). Files are grouped by top-level subdirectory.\n"
+            f"red = uncovered). Files are grouped by {grouping}.\n"
         )
         return intro + treemap + legend, companion
 
