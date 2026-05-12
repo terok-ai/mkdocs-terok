@@ -45,7 +45,7 @@ def main() -> int:
 
     if (m["major"], m["minor"]) != (pkg_major, pkg_minor):
         print(
-            f'README install snippet pins ^{m["major"]}.{m["minor"]} but '
+            f"README install snippet pins ^{m['major']}.{m['minor']} but "
             f"pyproject declares {pkg_version}.\n"
             f'Fix: change the snippet to `mkdocs-terok = "^{pkg_major}.{pkg_minor}"`.',
             file=sys.stderr,
