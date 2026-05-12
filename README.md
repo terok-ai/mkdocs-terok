@@ -23,11 +23,27 @@ gracefully to a warning admonition.
 
 ## Installation
 
-Add to your project's `pyproject.toml` as a docs-build dependency:
+Add to your project as a docs-build dependency.  The bounds shown below
+are kept in lockstep with this package's current release by a CI lint
+(`scripts/check-readme-version.py`), so copy any of them verbatim.
+
+**Poetry** — `pyproject.toml`:
 
 ```toml
 [tool.poetry.group.docs.dependencies]
 mkdocs-terok = "^0.6"
+```
+
+**uv**:
+
+```bash
+uv add --group docs "mkdocs-terok>=0.6,<0.7"
+```
+
+**pip**:
+
+```bash
+pip install "mkdocs-terok>=0.6,<0.7"
 ```
 
 ## License
