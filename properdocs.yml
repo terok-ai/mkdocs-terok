@@ -21,9 +21,9 @@ plugins:
   - search
   - terok:
       ci_map: true
-      quality_report: true
-      quality_report_coverage_json_path: reports/coverage.json
-      quality_report_codecov_repo: terok-ai/mkdocs-terok
+      code_metrics: true
+      code_metrics_coverage_json_path: reports/coverage.json
+      code_metrics_codecov_repo: terok-ai/mkdocs-terok
       test_map: true
       test_map_show_markers: false
       test_map_title: "Test Suite Map"
@@ -49,7 +49,7 @@ nav:
   - Home: index.md
   - API Reference: reference/
   - CI Map: ci-map.md
-  - Quality Report: quality-report.md
+  - Quality Report: code-metrics.md
   - Test Map: test-map.md
   - Config Reference Demo: config-reference.md
 

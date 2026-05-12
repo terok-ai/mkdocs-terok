@@ -19,7 +19,7 @@ __version__ = "0.0.0"  # managed by poetry-dynamic-versioning
 INVENTORY_ONLY_ENV: str = "MKDOCS_TEROK_INVENTORY_ONLY"
 """Env var honored by [`TerokPlugin.on_files`][mkdocs_terok.plugin.TerokPlugin.on_files]
 to skip every generator that ``objects.inv`` doesn't depend on
-(``ci_map``, ``quality_report``, ``test_map``, ``module_map``).
+(``ci_map``, ``code_metrics``, ``test_map``, ``module_map``).
 Set by [`mkdocs_terok.inventory.build_inventory`][] when subprocessing
 ``properdocs build`` so a minimal ``poetry install --only main,docs``
 env doesn't trip generators that need ``pytest``/``scc``/``vulture``.

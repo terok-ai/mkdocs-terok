@@ -88,7 +88,7 @@ def build_inventory(*, config: Path, output: Path) -> None:
         patched_path = Path(patched_file.name)
 
     # The terok plugin honors INVENTORY_ONLY_ENV to skip generators that
-    # don't feed objects.inv (test_map needs pytest, quality_report needs
+    # don't feed objects.inv (test_map needs pytest, code_metrics needs
     # scc/vulture, …) — so a ``poetry install --only main,docs`` env can
     # still produce an inventory.
     env = {**os.environ, INVENTORY_ONLY_ENV: "1"}

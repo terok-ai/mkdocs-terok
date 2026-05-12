@@ -5,7 +5,7 @@
 
 Runs complexipy, vulture, tach, scc, and docstr-coverage, then assembles
 the results into a single Markdown page with a Mermaid dependency diagram.
-Returns a [`QualityReportResult`][mkdocs_terok.quality_report.QualityReportResult] containing the Markdown and any
+Returns a [`CodeMetricsResult`][mkdocs_terok.code_metrics.CodeMetricsResult] containing the Markdown and any
 companion files (e.g. SVGs) that the consumer should write alongside it.
 """
 
@@ -34,7 +34,7 @@ _VENV_BIN = Path(sys.executable).parent
 
 
 @dataclass(frozen=True)
-class QualityReportConfig:
+class CodeMetricsConfig:
     """Configuration for quality report generation.
 
     All paths are relative to ``root`` unless absolute. Sections gracefully
@@ -110,7 +110,7 @@ class QualityReportConfig:
 
 
 @dataclass
-class QualityReportResult:
+class CodeMetricsResult:
     """Result of quality report generation.
 
     Attributes:
@@ -128,17 +128,17 @@ class QualityReportResult:
 # ---------------------------------------------------------------------------
 
 
-def generate_quality_report(config: QualityReportConfig | None = None) -> QualityReportResult:
+def generate_code_metrics(config: CodeMetricsConfig | None = None) -> CodeMetricsResult:
     """Assemble the full quality report.
 
     Args:
         config: Report configuration. Uses defaults if ``None``.
 
     Returns:
-        A [`QualityReportResult`][mkdocs_terok.quality_report.QualityReportResult] with the Markdown and companion files.
+        A [`CodeMetricsResult`][mkdocs_terok.code_metrics.CodeMetricsResult] with the Markdown and companion files.
     """
     if config is None:
-        config = QualityReportConfig()
+        config = CodeMetricsConfig()
 
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     coverage_md, companion = _section_coverage_treemap(config)
@@ -187,7 +187,7 @@ def generate_quality_report(config: QualityReportConfig | None = None) -> Qualit
         ]
     )
 
-    return QualityReportResult(
+    return CodeMetricsResult(
         markdown="".join(sections),
         companion_files=companion,
     )
@@ -198,7 +198,7 @@ def generate_quality_report(config: QualityReportConfig | None = None) -> Qualit
 # ---------------------------------------------------------------------------
 
 
-def _section_coverage_treemap(cfg: QualityReportConfig) -> tuple[str, dict[str, str]]:
+def _section_coverage_treemap(cfg: CodeMetricsConfig) -> tuple[str, dict[str, str]]:
     """Generate the coverage treemap embed and return (markdown, companion_files).
 
     Priority:
@@ -408,7 +408,7 @@ def _empty_treemap_svg(message: str) -> str:
     )
 
 
-def _section_loc(cfg: QualityReportConfig) -> str:
+def _section_loc(cfg: CodeMetricsConfig) -> str:
     """Generate lines-of-code statistics using scc."""
     import shutil
 
@@ -462,7 +462,7 @@ def _section_loc(cfg: QualityReportConfig) -> str:
     return "".join(lines)
 
 
-def _section_layer_overview(cfg: QualityReportConfig) -> str:
+def _section_layer_overview(cfg: CodeMetricsConfig) -> str:
     """Generate a high-level layer dependency graph from tach.toml."""
     if not cfg.include_layer_overview:
         return ""
@@ -504,7 +504,7 @@ def _section_layer_overview(cfg: QualityReportConfig) -> str:
     return "".join(lines)
 
 
-def _section_dependency_diagram(cfg: QualityReportConfig) -> str:
+def _section_dependency_diagram(cfg: CodeMetricsConfig) -> str:
     """Generate module dependency diagram from tach."""
     result = _run(sys.executable, "-m", "tach", "show", "--mermaid", "-o", "-", cwd=cfg.root)
     if result.returncode != 0:
@@ -537,7 +537,7 @@ def _section_dependency_diagram(cfg: QualityReportConfig) -> str:
     return "```mermaid\n" + "\n".join(coarsened) + "\n```\n"
 
 
-def _section_boundary_check(cfg: QualityReportConfig) -> str:
+def _section_boundary_check(cfg: CodeMetricsConfig) -> str:
     """Run tach check and report results."""
     loaded = _load_tach_toml(cfg.root)
     mod_count = 0
@@ -555,7 +555,7 @@ def _section_boundary_check(cfg: QualityReportConfig) -> str:
     return f"```\n{output}\n```\n"
 
 
-def _section_dependency_report(cfg: QualityReportConfig) -> str:
+def _section_dependency_report(cfg: CodeMetricsConfig) -> str:
     """Generate a module dependency summary from tach.toml."""
     loaded = _load_tach_toml(cfg.root)
     if not loaded:
@@ -603,7 +603,7 @@ def _section_dependency_report(cfg: QualityReportConfig) -> str:
     return "".join(lines)
 
 
-def _section_complexity(cfg: QualityReportConfig) -> str:
+def _section_complexity(cfg: CodeMetricsConfig) -> str:
     """Generate cognitive complexity section from complexipy."""
     run_result = _run(
         str(_VENV_BIN / "complexipy"),
@@ -690,7 +690,7 @@ def _section_complexity(cfg: QualityReportConfig) -> str:
     return "".join(lines)
 
 
-def _section_dead_code(cfg: QualityReportConfig) -> str:
+def _section_dead_code(cfg: CodeMetricsConfig) -> str:
     """Generate dead code section from vulture."""
     cmd = [sys.executable, "-m", "vulture", str(cfg.resolved_src_dir)]
     resolved_whitelist = cfg._resolve_optional(cfg.vulture_whitelist)
@@ -730,7 +730,7 @@ def _section_dead_code(cfg: QualityReportConfig) -> str:
     return "".join(lines)
 
 
-def _section_docstring_coverage(cfg: QualityReportConfig) -> str:
+def _section_docstring_coverage(cfg: CodeMetricsConfig) -> str:
     """Generate docstring coverage section."""
     result = _run(
         str(_VENV_BIN / "docstr-coverage"),
