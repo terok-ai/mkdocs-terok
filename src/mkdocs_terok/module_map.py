@@ -146,7 +146,7 @@ def _read_tach_config(src_root: Path) -> _TachConfig | None:
 
 
 def _parse_tach(path: Path) -> _TachConfig | None:
-    """Parse a ``tach.toml`` file into a :class:`_TachConfig`."""
+    """Parse a ``tach.toml`` file into a [`_TachConfig`][mkdocs_terok.module_map._TachConfig]."""
     try:
         import tomllib
 

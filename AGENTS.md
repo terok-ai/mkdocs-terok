@@ -36,6 +36,7 @@ make check      # Run lint + test + docstrings + deadcode + reuse
 - **Line length**: 100 characters
 - **Type hints**: Use Python 3.12+ type hints
 - **Docstrings**: Required for all public functions, classes, and modules (95% min)
+- **Cross-references in docstrings**: use mkdocstrings autoref syntax `` [`Name`][module.path.Name] `` — never the Sphinx ``:class:`Name``` / ``:func:`name``` forms. Sphinx roles render as literal text on the rendered docs site (mkdocstrings doesn't process them). Prefer the explicit full path over the bare `` [`Name`][] `` autoref form: explicit paths keep `properdocs build --strict` green even when the symbol's short name isn't unique. For external symbols, use the dependency's own path (e.g. `` [`Sandbox`][terok_sandbox.Sandbox] ``, `` [`StreamReader`][asyncio.StreamReader] ``) — those resolve via the inventories listed in `properdocs.yml`.
 - **SPDX headers**: Every `.py` file must have an SPDX header
 - **No runtime dependency on the doc engine in generator modules**: Only
   `plugin.py` imports `properdocs`; each generator module produces strings and

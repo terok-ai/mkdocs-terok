@@ -5,7 +5,7 @@
 
 Runs complexipy, vulture, tach, scc, and docstr-coverage, then assembles
 the results into a single Markdown page with a Mermaid dependency diagram.
-Returns a :class:`QualityReportResult` containing the Markdown and any
+Returns a [`QualityReportResult`][mkdocs_terok.quality_report.QualityReportResult] containing the Markdown and any
 companion files (e.g. SVGs) that the consumer should write alongside it.
 """
 
@@ -126,7 +126,7 @@ def generate_quality_report(config: QualityReportConfig | None = None) -> Qualit
         config: Report configuration. Uses defaults if ``None``.
 
     Returns:
-        A :class:`QualityReportResult` with the Markdown and companion files.
+        A [`QualityReportResult`][mkdocs_terok.quality_report.QualityReportResult] with the Markdown and companion files.
     """
     if config is None:
         config = QualityReportConfig()
