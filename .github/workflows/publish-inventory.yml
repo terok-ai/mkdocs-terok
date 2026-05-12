@@ -1,0 +1,90 @@
+# SPDX-FileCopyrightText: 2026 Jiri Vyskocil
+# SPDX-License-Identifier: 0BSD
+
+# Reusable workflow: build a sibling-decoupled objects.inv for the calling
+# repo and PUT it into terok-ai/docs-inventories via the GitHub Contents
+# API.  The bucket repo holds one .inv file per source repo at
+# `<repo>/objects.inv`; downstream `properdocs.yml` files read it via
+# `https://raw.githubusercontent.com/terok-ai/docs-inventories/main/<repo>/objects.inv`.
+#
+# Pin third-party actions to full commit SHAs.  GitHub-owned actions
+# (actions/*) may use version tags.
+
+name: Publish inventory (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version used for the inventory build"
+        type: string
+        default: "3.12"
+      poetry-install-args:
+        description: "Extra args passed to ``poetry install``"
+        type: string
+        default: "--with docs --no-interaction"
+      bucket-repo:
+        description: "Owner/name of the inventory bucket repo"
+        type: string
+        default: "terok-ai/docs-inventories"
+    secrets:
+      INVENTORY_WRITE_TOKEN:
+        description: "PAT with `Contents: write` on the bucket repo"
+        required: true
+
+permissions: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a # v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install dynamic versioning plugin
+        run: poetry self add "poetry-dynamic-versioning[plugin]>=1.0.0,<2.0.0"
+
+      - name: Install dependencies
+        run: poetry install ${{ inputs.poetry-install-args }}
+
+      - name: Generate inventory
+        run: poetry run python -m mkdocs_terok.inventory -o /tmp/objects.inv
+
+      - name: Publish to ${{ inputs.bucket-repo }}
+        env:
+          GH_TOKEN: ${{ secrets.INVENTORY_WRITE_TOKEN }}
+          BUCKET: ${{ inputs.bucket-repo }}
+        run: |
+          set -euo pipefail
+          repo_name="${GITHUB_REPOSITORY##*/}"
+          path="${repo_name}/objects.inv"
+          api="repos/${BUCKET}/contents/${path}"
+
+          # GET current SHA so PUT updates instead of conflicting; absent
+          # on first publish, in which case we PUT without a sha field.
+          sha=$(gh api "$api" --jq .sha 2>/dev/null || true)
+
+          payload=(
+            -X PUT "$api"
+            -f message="inventory from ${repo_name}@${GITHUB_SHA::7}"
+            -f content="$(base64 -w0 /tmp/objects.inv)"
+          )
+          if [[ -n "$sha" ]]; then
+            payload+=(-f sha="$sha")
+          fi
+          gh api "${payload[@]}"

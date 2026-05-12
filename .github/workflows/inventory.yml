@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 Jiri Vyskocil
+# SPDX-License-Identifier: 0BSD
+
+# Calls the reusable inventory-publish workflow on every master merge,
+# in parallel with `docs.yml`.  The two jobs are intentionally
+# decoupled: a failed Pages deploy doesn't stale the inventory bucket,
+# and an inventory hiccup doesn't stale the docs site.
+
+name: Publish inventory
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  publish:
+    if: github.repository == 'terok-ai/mkdocs-terok' && github.ref == 'refs/heads/master'
+    uses: ./.github/workflows/publish-inventory.yml
+    secrets:
+      INVENTORY_WRITE_TOKEN: ${{ secrets.INVENTORY_WRITE_TOKEN }}
