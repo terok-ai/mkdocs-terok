@@ -88,7 +88,7 @@ class TestConfigDefaults:
         """Empty strings for optional path settings should not create Path('.')."""
         plugin = _make_plugin(
             quality_report=True,
-            quality_report_codecov_treemap_path="",
+            quality_report_coverage_json_path="",
             test_map=True,
             test_map_integration_dir="",
         )
@@ -108,9 +108,9 @@ class TestConfigDefaults:
             )
             plugin.on_files(MagicMock(), config=_make_config())
 
-        # QualityReportConfig should have codecov_treemap_path=None, not Path(".")
+        # QualityReportConfig should have coverage_json_path=None, not Path(".")
         qr_config = mock_qr.call_args[0][0]
-        assert qr_config.codecov_treemap_path is None
+        assert qr_config.coverage_json_path is None
 
         # TestMapConfig should have integration_dir=None, not Path(".")
         tm_config = mock_tm.call_args[1]["config"]

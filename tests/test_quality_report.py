@@ -105,30 +105,51 @@ def test_quality_report_config_relative_root(
     assert config.resolved_tests_dir == project / "tests"
 
 
+_SAMPLE_COVERAGE_JSON = {
+    "meta": {"version": "7.6.1"},
+    "files": {
+        "src/pkg/core.py": {
+            "summary": {"num_statements": 100, "covered_lines": 90, "percent_covered": 90.0},
+        },
+        "src/pkg/util.py": {
+            "summary": {"num_statements": 40, "covered_lines": 30, "percent_covered": 75.0},
+        },
+        "src/pkg/cli/main.py": {
+            "summary": {"num_statements": 20, "covered_lines": 10, "percent_covered": 50.0},
+        },
+    },
+    "totals": {"num_statements": 160, "covered_lines": 130, "percent_covered": 81.25},
+}
+
+
 @pytest.mark.parametrize(
-    ("treemap_exists", "codecov_repo", "expected_fragment"),
+    ("coverage_present", "codecov_repo", "expected_fragment"),
     [
-        pytest.param(False, "", "not available", id="no-treemap-no-codecov"),
-        pytest.param(False, "org/repo", "codecov.io", id="codecov-url-fallback"),
-        pytest.param(True, "", 'data="coverage_treemap.svg"', id="bundled-svg"),
+        pytest.param(False, "", "not available", id="no-coverage-no-codecov"),
+        pytest.param(False, "org/repo", "live from Codecov", id="codecov-live-fallback"),
+        pytest.param(True, "", 'data="coverage_treemap.svg"', id="local-svg"),
+        pytest.param(
+            True, "org/repo", 'data="coverage_treemap.svg"', id="local-svg-overrides-codecov"
+        ),
     ],
 )
 def test_coverage_treemap_variants(
     tmp_path: Path,
-    treemap_exists: bool,
+    coverage_present: bool,
     codecov_repo: str,
     expected_fragment: str,
 ) -> None:
     """Coverage treemap section should handle different config combinations."""
-    treemap_path = tmp_path / "treemap.svg" if treemap_exists else None
-    if treemap_exists and treemap_path:
-        treemap_path.write_text("<svg/>")
+    coverage_path: Path | None = None
+    if coverage_present:
+        coverage_path = tmp_path / "coverage.json"
+        coverage_path.write_text(json.dumps(_SAMPLE_COVERAGE_JSON))
 
     config = QualityReportConfig(
         root=tmp_path,
         src_dir=tmp_path / "src",
         tests_dir=tmp_path / "tests",
-        codecov_treemap_path=treemap_path,
+        coverage_json_path=coverage_path,
         codecov_repo=codecov_repo,
     )
     (tmp_path / "src").mkdir(exist_ok=True)
@@ -136,8 +157,27 @@ def test_coverage_treemap_variants(
 
     result = generate_quality_report(config)
     assert expected_fragment in result.markdown
-    if treemap_exists:
-        assert result.companion_files["coverage_treemap.svg"] == "<svg/>"
+    if coverage_present:
+        svg = result.companion_files["coverage_treemap.svg"]
+        assert svg.startswith("<svg")
+        assert "src/pkg/core.py" in svg
+
+
+def test_coverage_treemap_invalid_json_falls_back(tmp_path: Path) -> None:
+    """A malformed coverage.json should produce a warning, not crash the build."""
+    bad = tmp_path / "coverage.json"
+    bad.write_text("{not valid json")
+    config = QualityReportConfig(
+        root=tmp_path,
+        src_dir=tmp_path / "src",
+        tests_dir=tmp_path / "tests",
+        coverage_json_path=bad,
+    )
+    (tmp_path / "src").mkdir(exist_ok=True)
+    (tmp_path / "tests").mkdir(exist_ok=True)
+    result = generate_quality_report(config)
+    assert "could not be loaded" in result.markdown
+    assert "coverage_treemap.svg" not in result.companion_files
 
 
 # ---------------------------------------------------------------------------

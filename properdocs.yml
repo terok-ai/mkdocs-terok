@@ -22,7 +22,7 @@ plugins:
   - terok:
       ci_map: true
       quality_report: true
-      quality_report_codecov_treemap_path: reports/coverage_treemap.svg
+      quality_report_coverage_json_path: reports/coverage.json
       quality_report_codecov_repo: terok-ai/mkdocs-terok
       test_map: true
       test_map_show_markers: false
