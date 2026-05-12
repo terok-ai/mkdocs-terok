@@ -67,7 +67,9 @@ jobs:
           key: venv-inventory-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/pyproject.toml', '**/poetry.lock') }}
 
       - name: Install dependencies
-        run: poetry install ${{ inputs.poetry-install-args }}
+        env:
+          INSTALL_ARGS: ${{ inputs.poetry-install-args }}
+        run: poetry install $INSTALL_ARGS
 
       - name: Generate inventory
         run: poetry run python -m mkdocs_terok.inventory -o /tmp/objects.inv
