@@ -12,9 +12,9 @@ from unittest.mock import patch
 
 import pytest
 
-from mkdocs_terok.quality_report import (
-    QualityReportConfig,
-    QualityReportResult,
+from mkdocs_terok.code_metrics import (
+    CodeMetricsConfig,
+    CodeMetricsResult,
     _coarsen_graph,
     _coarsen_module,
     _nbsp_num,
@@ -25,7 +25,7 @@ from mkdocs_terok.quality_report import (
     _section_dependency_report,
     _section_docstring_coverage,
     _section_loc,
-    generate_quality_report,
+    generate_code_metrics,
 )
 
 
@@ -56,9 +56,9 @@ def test_coarsen_graph_collapses_edges() -> None:
     assert not any("terok.lib.core --> terok.lib.core" in line for line in result)
 
 
-def test_generate_quality_report_returns_result(tmp_path: Path) -> None:
-    """Report generation should return a QualityReportResult with markdown."""
-    config = QualityReportConfig(
+def test_generate_code_metrics_returns_result(tmp_path: Path) -> None:
+    """Report generation should return a CodeMetricsResult with markdown."""
+    config = CodeMetricsConfig(
         root=tmp_path,
         src_dir=tmp_path / "src",
         tests_dir=tmp_path / "tests",
@@ -66,16 +66,16 @@ def test_generate_quality_report_returns_result(tmp_path: Path) -> None:
     (tmp_path / "src").mkdir()
     (tmp_path / "tests").mkdir()
 
-    result = generate_quality_report(config)
+    result = generate_code_metrics(config)
 
-    assert isinstance(result, QualityReportResult)
+    assert isinstance(result, CodeMetricsResult)
     assert "# Code Metrics" in result.markdown
     assert "Generated:" in result.markdown
 
 
-def test_quality_report_config_defaults() -> None:
+def test_code_metrics_config_defaults() -> None:
     """Config should have sensible defaults."""
-    config = QualityReportConfig()
+    config = CodeMetricsConfig()
     assert config.complexity_threshold == 15
     assert config.vulture_min_confidence == 80
     assert config.file_level_loc is True
@@ -84,22 +84,20 @@ def test_quality_report_config_defaults() -> None:
     assert len(config.resolved_histogram_buckets) == 9
 
 
-def test_quality_report_config_custom_buckets() -> None:
+def test_code_metrics_config_custom_buckets() -> None:
     """Custom histogram buckets should override defaults."""
     custom = [(0, 5), (6, 10), (11, 999)]
-    config = QualityReportConfig(histogram_buckets=custom)
+    config = CodeMetricsConfig(histogram_buckets=custom)
     assert config.resolved_histogram_buckets == custom
 
 
-def test_quality_report_config_relative_root(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_code_metrics_config_relative_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Relative root should be resolved to absolute, not cause path doubling."""
     project = tmp_path / "myproject"
     project.mkdir()
     monkeypatch.chdir(project)
 
-    config = QualityReportConfig(root=Path("."), src_dir=Path("pkg"))
+    config = CodeMetricsConfig(root=Path("."), src_dir=Path("pkg"))
     assert config.root.is_absolute()
     assert config.resolved_src_dir == project / "pkg"
     assert config.resolved_tests_dir == project / "tests"
@@ -145,7 +143,7 @@ def test_coverage_treemap_variants(
         coverage_path = tmp_path / "coverage.json"
         coverage_path.write_text(json.dumps(_SAMPLE_COVERAGE_JSON))
 
-    config = QualityReportConfig(
+    config = CodeMetricsConfig(
         root=tmp_path,
         src_dir=tmp_path / "src",
         tests_dir=tmp_path / "tests",
@@ -155,7 +153,7 @@ def test_coverage_treemap_variants(
     (tmp_path / "src").mkdir(exist_ok=True)
     (tmp_path / "tests").mkdir(exist_ok=True)
 
-    result = generate_quality_report(config)
+    result = generate_code_metrics(config)
     assert expected_fragment in result.markdown
     if coverage_present:
         svg = result.companion_files["coverage_treemap.svg"]
@@ -167,7 +165,7 @@ def test_coverage_treemap_invalid_json_falls_back(tmp_path: Path) -> None:
     """A malformed coverage.json should produce a warning, not crash the build."""
     bad = tmp_path / "coverage.json"
     bad.write_text("{not valid json")
-    config = QualityReportConfig(
+    config = CodeMetricsConfig(
         root=tmp_path,
         src_dir=tmp_path / "src",
         tests_dir=tmp_path / "tests",
@@ -175,7 +173,7 @@ def test_coverage_treemap_invalid_json_falls_back(tmp_path: Path) -> None:
     )
     (tmp_path / "src").mkdir(exist_ok=True)
     (tmp_path / "tests").mkdir(exist_ok=True)
-    result = generate_quality_report(config)
+    result = generate_code_metrics(config)
     assert "could not be loaded" in result.markdown
     assert "coverage_treemap.svg" not in result.companion_files
 
@@ -209,10 +207,10 @@ def test_loc_renders_table_when_scc_available(tmp_path: Path) -> None:
     (src / "mod.py").write_text("# code")
     (tmp_path / "tests").mkdir()
 
-    cfg = QualityReportConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
+    cfg = CodeMetricsConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
     with (
         patch("shutil.which", return_value="/usr/bin/scc"),
-        patch("mkdocs_terok.quality_report._run", return_value=_ok(stdout=_SCC_JSON)),
+        patch("mkdocs_terok.code_metrics._run", return_value=_ok(stdout=_SCC_JSON)),
     ):
         result = _section_loc(cfg)
 
@@ -241,8 +239,8 @@ def test_complexity_renders_histogram_when_complexipy_succeeds(tmp_path: Path) -
     cache_dir.mkdir()
     (cache_dir / "result.json").write_text(_COMPLEXIPY_CACHE)
 
-    cfg = QualityReportConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
-    with patch("mkdocs_terok.quality_report._run", return_value=_ok()):
+    cfg = CodeMetricsConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
+    with patch("mkdocs_terok.code_metrics._run", return_value=_ok()):
         result = _section_complexity(cfg)
 
     assert "!!! warning" not in result
@@ -262,8 +260,8 @@ def test_dead_code_renders_table_when_vulture_finds_issues(tmp_path: Path) -> No
         "src/pkg/mod.py:10: unused function 'old_func' (80% confidence)\n"
         "src/pkg/mod.py:25: unused variable 'x' (90% confidence)\n"
     )
-    cfg = QualityReportConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
-    with patch("mkdocs_terok.quality_report._run", return_value=_ok(stdout=vulture_output)):
+    cfg = CodeMetricsConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
+    with patch("mkdocs_terok.code_metrics._run", return_value=_ok(stdout=vulture_output)):
         result = _section_dead_code(cfg)
 
     assert "!!! warning" not in result
@@ -276,8 +274,8 @@ def test_dead_code_clean_when_vulture_finds_nothing(tmp_path: Path) -> None:
     """Dead code section should report clean when vulture finds nothing."""
     (tmp_path / "src").mkdir()
     (tmp_path / "tests").mkdir()
-    cfg = QualityReportConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
-    with patch("mkdocs_terok.quality_report._run", return_value=_ok()):
+    cfg = CodeMetricsConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
+    with patch("mkdocs_terok.code_metrics._run", return_value=_ok()):
         result = _section_dead_code(cfg)
 
     assert "No dead code found" in result
@@ -288,8 +286,8 @@ def test_dependency_diagram_renders_mermaid_when_tach_succeeds(tmp_path: Path) -
     (tmp_path / "src").mkdir()
     (tmp_path / "tests").mkdir()
     tach_mermaid = "graph TD\n    pkg.core --> pkg.utils\n    pkg.api --> pkg.core"
-    cfg = QualityReportConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
-    with patch("mkdocs_terok.quality_report._run", return_value=_ok(stdout=tach_mermaid)):
+    cfg = CodeMetricsConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
+    with patch("mkdocs_terok.code_metrics._run", return_value=_ok(stdout=tach_mermaid)):
         result = _section_dependency_diagram(cfg)
 
     assert "```mermaid" in result
@@ -311,7 +309,7 @@ def test_dependency_report_renders_modules_from_tach_toml(tmp_path: Path) -> Non
         'path = "pkg.api"\n'
         'depends_on = [{ path = "pkg.core" }]\n'
     )
-    cfg = QualityReportConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
+    cfg = CodeMetricsConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
     result = _section_dependency_report(cfg)
 
     assert "!!! warning" not in result
@@ -328,9 +326,9 @@ def test_boundary_check_passes_when_tach_succeeds(tmp_path: Path) -> None:
     (tmp_path / "tach.toml").write_text(
         'exact = true\nsource_roots = ["src"]\n\n[[modules]]\npath = "pkg"\ndepends_on = []\n'
     )
-    cfg = QualityReportConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
+    cfg = CodeMetricsConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
     with patch(
-        "mkdocs_terok.quality_report._run", return_value=_ok(stdout="✅ All modules validated!")
+        "mkdocs_terok.code_metrics._run", return_value=_ok(stdout="✅ All modules validated!")
     ):
         result = _section_boundary_check(cfg)
 
@@ -350,8 +348,8 @@ def test_docstring_coverage_renders_summary(tmp_path: Path) -> None:
         "Total coverage: 90.0%\n"
         "Grade: Very good\n"
     )
-    cfg = QualityReportConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
-    with patch("mkdocs_terok.quality_report._run", return_value=_ok(stdout=docstr_output)):
+    cfg = CodeMetricsConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
+    with patch("mkdocs_terok.code_metrics._run", return_value=_ok(stdout=docstr_output)):
         result = _section_docstring_coverage(cfg)
 
     assert "Total coverage: 90.0%" in result
@@ -367,11 +365,11 @@ _FAIL = subprocess.CompletedProcess(
 )
 
 
-def _empty_project(tmp_path: Path) -> QualityReportConfig:
+def _empty_project(tmp_path: Path) -> CodeMetricsConfig:
     """Create a minimal project tree with no external tools available."""
     (tmp_path / "src").mkdir()
     (tmp_path / "tests").mkdir()
-    return QualityReportConfig(
+    return CodeMetricsConfig(
         root=tmp_path,
         src_dir=tmp_path / "src",
         tests_dir=tmp_path / "tests",
@@ -390,7 +388,7 @@ def test_loc_degrades_when_scc_missing(tmp_path: Path) -> None:
 def test_complexity_degrades_when_complexipy_missing(tmp_path: Path) -> None:
     """Complexity section emits a warning when complexipy is absent."""
     cfg = _empty_project(tmp_path)
-    with patch("mkdocs_terok.quality_report._run", return_value=_FAIL):
+    with patch("mkdocs_terok.code_metrics._run", return_value=_FAIL):
         result = _section_complexity(cfg)
     assert "!!! warning" in result
     assert "complexipy" in result.lower()
@@ -399,7 +397,7 @@ def test_complexity_degrades_when_complexipy_missing(tmp_path: Path) -> None:
 def test_dependency_diagram_degrades_when_tach_missing(tmp_path: Path) -> None:
     """Dependency diagram emits a warning when tach is not installed."""
     cfg = _empty_project(tmp_path)
-    with patch("mkdocs_terok.quality_report._run", return_value=_FAIL):
+    with patch("mkdocs_terok.code_metrics._run", return_value=_FAIL):
         result = _section_dependency_diagram(cfg)
     assert "!!! warning" in result
     assert "tach" in result.lower()
@@ -416,7 +414,7 @@ def test_dependency_report_degrades_without_tach_toml(tmp_path: Path) -> None:
 def test_boundary_check_degrades_when_tach_missing(tmp_path: Path) -> None:
     """Boundary check degrades when tach is not installed."""
     cfg = _empty_project(tmp_path)
-    with patch("mkdocs_terok.quality_report._run", return_value=_FAIL):
+    with patch("mkdocs_terok.code_metrics._run", return_value=_FAIL):
         result = _section_boundary_check(cfg)
     assert "```" in result
     assert "command not found" in result
@@ -425,7 +423,7 @@ def test_boundary_check_degrades_when_tach_missing(tmp_path: Path) -> None:
 def test_dead_code_degrades_when_vulture_missing(tmp_path: Path) -> None:
     """Dead code section emits a warning when vulture fails."""
     cfg = _empty_project(tmp_path)
-    with patch("mkdocs_terok.quality_report._run", return_value=_FAIL):
+    with patch("mkdocs_terok.code_metrics._run", return_value=_FAIL):
         result = _section_dead_code(cfg)
     assert "!!! warning" in result
     assert "vulture" in result.lower()
@@ -434,7 +432,7 @@ def test_dead_code_degrades_when_vulture_missing(tmp_path: Path) -> None:
 def test_docstring_coverage_degrades_when_tool_missing(tmp_path: Path) -> None:
     """Docstring section degrades when docstr-coverage is not installed."""
     cfg = _empty_project(tmp_path)
-    with patch("mkdocs_terok.quality_report._run", return_value=_FAIL):
+    with patch("mkdocs_terok.code_metrics._run", return_value=_FAIL):
         result = _section_docstring_coverage(cfg)
     assert "```" in result
     assert "command not found" in result
@@ -445,9 +443,9 @@ def test_full_report_degrades_gracefully(tmp_path: Path) -> None:
     cfg = _empty_project(tmp_path)
     with (
         patch("shutil.which", return_value=None),
-        patch("mkdocs_terok.quality_report._run", return_value=_FAIL),
+        patch("mkdocs_terok.code_metrics._run", return_value=_FAIL),
     ):
-        result = generate_quality_report(cfg)
-    assert isinstance(result, QualityReportResult)
+        result = generate_code_metrics(cfg)
+    assert isinstance(result, CodeMetricsResult)
     assert "# Code Metrics" in result.markdown
     assert "!!! warning" in result.markdown

@@ -9,7 +9,7 @@ description = "Shared ProperDocs documentation generators for terok projects"
 readme = "README.md"
 license = "0BSD"
 authors = ["Jiri Vyskocil <jiri@vyskocil.com>"]
-keywords = ["properdocs", "mkdocs", "documentation", "quality-report", "ci-map"]
+keywords = ["properdocs", "mkdocs", "documentation", "code-metrics", "ci-map"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",

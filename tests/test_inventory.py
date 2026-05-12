@@ -223,7 +223,7 @@ class TestBuildInventory:
 
         That env var is the contract that lets the ``terok`` plugin skip
         generators which would fail in a stripped-down install (test_map
-        without pytest, quality_report without scc/vulture, …).  Without
+        without pytest, code_metrics without scc/vulture, …).  Without
         it set, the inventory build trips on the first such generator.
         """
         cfg = _make_config(tmp_path)

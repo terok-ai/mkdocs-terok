@@ -43,19 +43,19 @@ class TerokPluginConfig(Config):
     ci_map_path = c.Type(str, default="ci-map.md")
 
     # Quality report
-    quality_report = c.Type(bool, default=False)
-    quality_report_path = c.Type(str, default="quality-report.md")
-    quality_report_complexity_threshold = c.Type(int, default=15)
-    quality_report_graph_depth = c.Type(int, default=3)
-    quality_report_vulture_min_confidence = c.Type(int, default=80)
-    quality_report_file_level_loc = c.Type(bool, default=True)
-    quality_report_include_layer_overview = c.Type(bool, default=False)
-    quality_report_include_graph_coarsening = c.Type(bool, default=False)
-    quality_report_coverage_json_path = c.Optional(c.Type(str))
-    quality_report_treemap_group_depth = c.Type(int, default=3)
-    quality_report_codecov_repo = c.Type(str, default="")
-    quality_report_src_label = c.Type(str, default="Source")
-    quality_report_tests_label = c.Type(str, default="Tests")
+    code_metrics = c.Type(bool, default=False)
+    code_metrics_path = c.Type(str, default="code-metrics.md")
+    code_metrics_complexity_threshold = c.Type(int, default=15)
+    code_metrics_graph_depth = c.Type(int, default=3)
+    code_metrics_vulture_min_confidence = c.Type(int, default=80)
+    code_metrics_file_level_loc = c.Type(bool, default=True)
+    code_metrics_include_layer_overview = c.Type(bool, default=False)
+    code_metrics_include_graph_coarsening = c.Type(bool, default=False)
+    code_metrics_coverage_json_path = c.Optional(c.Type(str))
+    code_metrics_treemap_group_depth = c.Type(int, default=3)
+    code_metrics_codecov_repo = c.Type(str, default="")
+    code_metrics_src_label = c.Type(str, default="Source")
+    code_metrics_tests_label = c.Type(str, default="Tests")
 
     # Test map
     test_map = c.Type(bool, default=False)
@@ -103,7 +103,7 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
 
         When [`INVENTORY_ONLY_ENV`][mkdocs_terok.INVENTORY_ONLY_ENV]
         is set, the four generators that don't feed ``objects.inv``
-        (``ci_map``, ``quality_report``, ``test_map``, ``module_map``)
+        (``ci_map``, ``code_metrics``, ``test_map``, ``module_map``)
         are skipped, so a stripped-down ``poetry install --only main,docs``
         environment can still produce the inventory without ``pytest``,
         ``scc``, ``vulture``, etc. on PATH.  ``ref_pages`` always runs
@@ -126,8 +126,8 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
         if not inventory_only:
             if self.config.ci_map:
                 self._generate_ci_map(files, config)
-            if self.config.quality_report:
-                self._generate_quality_report(files, config)
+            if self.config.code_metrics:
+                self._generate_code_metrics(files, config)
             if self.config.test_map:
                 self._generate_test_map(files, config)
             if self.config.module_map:
@@ -148,30 +148,30 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
         files.append(File.generated(config, self.config.ci_map_path, content=markdown))
         log.info(_LOG_GENERATED, self.config.ci_map_path)
 
-    def _generate_quality_report(self, files: Files, config: ProperDocsConfig) -> None:
+    def _generate_code_metrics(self, files: Files, config: ProperDocsConfig) -> None:
         """Emit quality report page and companion files (e.g. treemap SVGs)."""
-        from mkdocs_terok.quality_report import QualityReportConfig, generate_quality_report
+        from mkdocs_terok.code_metrics import CodeMetricsConfig, generate_code_metrics
 
         coverage_json_path = (
-            Path(self.config.quality_report_coverage_json_path)
-            if self.config.quality_report_coverage_json_path
+            Path(self.config.code_metrics_coverage_json_path)
+            if self.config.code_metrics_coverage_json_path
             else None
         )
-        qr_config = QualityReportConfig(
-            complexity_threshold=self.config.quality_report_complexity_threshold,
-            graph_depth=self.config.quality_report_graph_depth,
-            vulture_min_confidence=self.config.quality_report_vulture_min_confidence,
-            file_level_loc=self.config.quality_report_file_level_loc,
-            include_layer_overview=self.config.quality_report_include_layer_overview,
-            include_graph_coarsening=self.config.quality_report_include_graph_coarsening,
+        qr_config = CodeMetricsConfig(
+            complexity_threshold=self.config.code_metrics_complexity_threshold,
+            graph_depth=self.config.code_metrics_graph_depth,
+            vulture_min_confidence=self.config.code_metrics_vulture_min_confidence,
+            file_level_loc=self.config.code_metrics_file_level_loc,
+            include_layer_overview=self.config.code_metrics_include_layer_overview,
+            include_graph_coarsening=self.config.code_metrics_include_graph_coarsening,
             coverage_json_path=coverage_json_path,
-            treemap_group_depth=self.config.quality_report_treemap_group_depth,
-            codecov_repo=self.config.quality_report_codecov_repo,
-            src_label=self.config.quality_report_src_label,
-            tests_label=self.config.quality_report_tests_label,
+            treemap_group_depth=self.config.code_metrics_treemap_group_depth,
+            codecov_repo=self.config.code_metrics_codecov_repo,
+            src_label=self.config.code_metrics_src_label,
+            tests_label=self.config.code_metrics_tests_label,
         )
-        result = generate_quality_report(qr_config)
-        report_path = self.config.quality_report_path
+        result = generate_code_metrics(qr_config)
+        report_path = self.config.code_metrics_path
         files.append(File.generated(config, report_path, content=result.markdown))
 
         # Place companion files (e.g. treemap SVG) as siblings of the rendered page.

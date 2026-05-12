@@ -75,7 +75,7 @@ class TestConfigDefaults:
     def test_generators_default_false(self) -> None:
         """All generator toggles should default to False."""
         plugin = _make_plugin()
-        for key in ("ci_map", "quality_report", "test_map", "ref_pages"):
+        for key in ("ci_map", "code_metrics", "test_map", "ref_pages"):
             assert getattr(plugin.config, key) is False, f"{key} should default to False"
 
     def test_asset_injection_default_true(self) -> None:
@@ -87,8 +87,8 @@ class TestConfigDefaults:
     def test_empty_string_optional_paths_coerced_to_none(self) -> None:
         """Empty strings for optional path settings should not create Path('.')."""
         plugin = _make_plugin(
-            quality_report=True,
-            quality_report_coverage_json_path="",
+            code_metrics=True,
+            code_metrics_coverage_json_path="",
             test_map=True,
             test_map_integration_dir="",
         )
@@ -99,7 +99,7 @@ class TestConfigDefaults:
             stack.enter_context(patch("mkdocs_terok.plugin.File"))
             mock_qr = stack.enter_context(
                 patch(
-                    "mkdocs_terok.quality_report.generate_quality_report",
+                    "mkdocs_terok.code_metrics.generate_code_metrics",
                     return_value=qr_result,
                 )
             )
@@ -108,7 +108,7 @@ class TestConfigDefaults:
             )
             plugin.on_files(MagicMock(), config=_make_config())
 
-        # QualityReportConfig should have coverage_json_path=None, not Path(".")
+        # CodeMetricsConfig should have coverage_json_path=None, not Path(".")
         qr_config = mock_qr.call_args[0][0]
         assert qr_config.coverage_json_path is None
 
@@ -190,7 +190,7 @@ class TestOnFilesCiMap:
         assert "ci-map.md" in uris
 
 
-class TestOnFilesQualityReport:
+class TestOnFilesCodeMetrics:
     """Quality report generation via on_files."""
 
     @staticmethod
@@ -204,20 +204,20 @@ class TestOnFilesQualityReport:
         """Quality report should produce the main file and companion files."""
         result = self._mock_result(companion_files={"coverage_treemap.svg": "<svg/>"})
         uris = _run_on_files(
-            _make_plugin(quality_report=True),
+            _make_plugin(code_metrics=True),
             _make_config(use_directory_urls=True),
-            ("mkdocs_terok.quality_report.generate_quality_report", result),
+            ("mkdocs_terok.code_metrics.generate_code_metrics", result),
         )
-        assert "quality-report.md" in uris
-        assert "quality-report/coverage_treemap.svg" in uris
+        assert "code-metrics.md" in uris
+        assert "code-metrics/coverage_treemap.svg" in uris
 
     def test_companion_path_no_directory_urls(self) -> None:
         """Companion files should land next to the report when use_directory_urls=False."""
         result = self._mock_result(companion_files={"treemap.svg": "<svg/>"})
         uris = _run_on_files(
-            _make_plugin(quality_report=True),
+            _make_plugin(code_metrics=True),
             _make_config(use_directory_urls=False),
-            ("mkdocs_terok.quality_report.generate_quality_report", result),
+            ("mkdocs_terok.code_metrics.generate_code_metrics", result),
         )
         assert "treemap.svg" in uris
 
@@ -225,9 +225,9 @@ class TestOnFilesQualityReport:
         """Companion files for index.md reports should use parent dir, not index/."""
         result = self._mock_result(companion_files={"treemap.svg": "<svg/>"})
         uris = _run_on_files(
-            _make_plugin(quality_report=True, quality_report_path="reports/index.md"),
+            _make_plugin(code_metrics=True, code_metrics_path="reports/index.md"),
             _make_config(use_directory_urls=True),
-            ("mkdocs_terok.quality_report.generate_quality_report", result),
+            ("mkdocs_terok.code_metrics.generate_code_metrics", result),
         )
         assert "reports/treemap.svg" in uris
         assert "reports/index/treemap.svg" not in uris
@@ -288,7 +288,7 @@ class TestOnFilesInventoryOnly:
     """``MKDOCS_TEROK_INVENTORY_ONLY=1`` skips heavy generators, keeps ref_pages."""
 
     def test_skips_heavy_generators(self, monkeypatch) -> None:
-        """ci_map, quality_report, test_map, module_map are all bypassed."""
+        """ci_map, code_metrics, test_map, module_map are all bypassed."""
         from mkdocs_terok import INVENTORY_ONLY_ENV
 
         monkeypatch.setenv(INVENTORY_ONLY_ENV, "1")
@@ -299,16 +299,16 @@ class TestOnFilesInventoryOnly:
 
         plugin = _make_plugin(
             ci_map=True,
-            quality_report=True,
+            code_metrics=True,
             test_map=True,
             module_map=True,
-            quality_report_codecov_repo="x/y",
+            code_metrics_codecov_repo="x/y",
         )
         _run_on_files(
             plugin,
             _make_config(),
             ("mkdocs_terok.ci_map.generate_ci_map", ci),
-            ("mkdocs_terok.quality_report.generate_quality_report", qr),
+            ("mkdocs_terok.code_metrics.generate_code_metrics", qr),
             ("mkdocs_terok.test_map.generate_test_map", tm),
             ("mkdocs_terok.module_map.generate_module_map", mm),
         )
