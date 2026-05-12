@@ -33,6 +33,11 @@ jobs:
         with:
           args: format --check
 
+      # Stdlib-only (tomllib + re); ubuntu-latest's stock python3 is 3.12+,
+      # tomllib is stdlib since 3.11 — no setup-python step needed.
+      - name: README install snippet ↔ pyproject version
+        run: python3 scripts/check-readme-version.py
+
   docstring-coverage:
     if: github.repository == 'terok-ai/mkdocs-terok'
     runs-on: ubuntu-latest

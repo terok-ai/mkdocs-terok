@@ -23,12 +23,32 @@ gracefully to a warning admonition.
 
 ## Installation
 
-Add to your project's `pyproject.toml` as a docs-build dependency:
+Add to your project as a docs-build dependency.
+
+**pip**:
+
+```bash
+pip install mkdocs-terok
+```
+
+**uv**:
+
+```bash
+uv add --group docs mkdocs-terok
+```
+
+**Poetry** — `pyproject.toml`:
 
 ```toml
 [tool.poetry.group.docs.dependencies]
-mkdocs-terok = "^0.5"
+mkdocs-terok = "^0.6"
 ```
+
+## Configuration
+
+Configured via the `terok` plugin in your `properdocs.yml`.  See this
+repository's own [`properdocs.yml`](properdocs.yml) for a self-documenting
+example that exercises every generator the package ships.
 
 ## License
 
