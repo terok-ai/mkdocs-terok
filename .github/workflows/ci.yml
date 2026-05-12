@@ -106,6 +106,25 @@ jobs:
       - name: Run tests
         run: make test
 
+      - name: Generate coverage JSON (treemap input)
+        # docs.yml consumes reports/coverage.json to render mkdocs-terok's
+        # own coverage treemap. `coverage json` reads the .coverage data file
+        # produced by `make test` above, so this does NOT re-run the test
+        # suite — it just serialises the existing coverage data.
+        run: poetry run coverage json -o reports/coverage.json
+
+      - name: Upload coverage artifact
+        # Consumed by docs.yml's master deploy via dawidd6/action-download-artifact.
+        # Same well-known-address contract as the sibling repos: workflow=ci.yml
+        # job=test artifact=coverage contains reports/coverage.{json,xml}.
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: |
+            reports/coverage.xml
+            reports/coverage.json
+          retention-days: 1
+
       - name: Upload coverage to Codecov
         if: always()
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v5
