@@ -20,9 +20,9 @@ on:
         type: string
         default: "3.12"
       poetry-install-args:
-        description: "Extra args passed to ``poetry install``"
+        description: "Args passed to ``poetry install``.  Default uses ``--only`` to skip dev/test groups, which often pull system-dep'd build-from-source packages (``python-dbusmock`` → ``dbus-python``, etc.) that aren't needed for inventory generation."
         type: string
-        default: "--with docs --no-interaction"
+        default: "--only main,docs --no-interaction"
       bucket-repo:
         description: "Owner/name of the inventory bucket repo"
         type: string
