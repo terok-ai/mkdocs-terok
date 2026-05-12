@@ -27,7 +27,7 @@ Add to your project's `pyproject.toml` as a docs-build dependency:
 
 ```toml
 [tool.poetry.group.docs.dependencies]
-mkdocs-terok = "^0.5"
+mkdocs-terok = "^0.6"
 ```
 
 ## License

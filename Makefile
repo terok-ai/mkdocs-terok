@@ -1,4 +1,4 @@
-.PHONY: all lint format test docstrings deadcode reuse check install install-dev clean spdx docs docs-serve
+.PHONY: all lint format test docstrings deadcode reuse readme-version check install install-dev clean spdx docs docs-serve
 
 REPORTS_DIR ?= reports
 COVERAGE_XML ?= $(REPORTS_DIR)/coverage.xml
@@ -35,8 +35,12 @@ reuse:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	poetry run reuse lint
 
+# Check README's install snippet pins the right major.minor for this version
+readme-version:
+	python3 scripts/check-readme-version.py
+
 # Run all checks (equivalent to CI)
-check: lint test docstrings deadcode reuse
+check: lint test docstrings deadcode reuse readme-version
 
 # Install runtime dependencies only
 install:
