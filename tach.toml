@@ -37,6 +37,8 @@ expose = [
   "config_reference.render_model_tables",
   "config_reference.render_yaml_example",
   "config_reference.render_json_schema",
+  "inventory",
+  "inventory.build_inventory",
 ]
 
 [[interfaces]]
