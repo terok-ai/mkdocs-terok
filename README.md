@@ -37,8 +37,7 @@ pip install mkdocs-terok
 uv add --group docs mkdocs-terok
 ```
 
-**Poetry** — `pyproject.toml` (canonical caret kept in sync with the
-current release by `scripts/check-readme-version.py`):
+**Poetry** — `pyproject.toml`:
 
 ```toml
 [tool.poetry.group.docs.dependencies]
