@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from mkdocs_terok import INVENTORY_ONLY_ENV
 from mkdocs_terok.inventory import (
     _main,
     _strip_sibling_inventory_lines,
@@ -114,9 +115,12 @@ class _FakeProperdocs:
         self.on_run = on_run
         self.captured_config_text: str | None = None
         self.last_cmd: list[str] | None = None
+        self.last_env: dict[str, str] | None = None
 
-    def __call__(self, cmd: list[str], **_: object) -> subprocess.CompletedProcess:
+    def __call__(self, cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
         self.last_cmd = cmd
+        env = kwargs.get("env")
+        self.last_env = env if isinstance(env, dict) else None
         cfg_path = Path(cmd[cmd.index("--config-file") + 1])
         self.captured_config_text = cfg_path.read_text()
         site_dir = Path(cmd[cmd.index("--site-dir") + 1])
@@ -211,6 +215,29 @@ class TestBuildInventory:
         build_inventory(config=cfg, output=out)
 
         assert out.is_file()
+
+    def test_subprocess_env_sets_inventory_only_flag(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """``properdocs build`` is invoked with ``MKDOCS_TEROK_INVENTORY_ONLY=1``.
+
+        That env var is the contract that lets the ``terok`` plugin skip
+        generators which would fail in a stripped-down install (test_map
+        without pytest, quality_report without scc/vulture, …).  Without
+        it set, the inventory build trips on the first such generator.
+        """
+        cfg = _make_config(tmp_path)
+        fake = _FakeProperdocs()
+        monkeypatch.setattr(subprocess, "run", fake)
+        # Strip the env var from the parent process if a prior test left
+        # it set; the assertion below is meaningful only when the value
+        # comes from build_inventory itself.
+        monkeypatch.delenv(INVENTORY_ONLY_ENV, raising=False)
+
+        build_inventory(config=cfg, output=tmp_path / "objects.inv")
+
+        assert fake.last_env is not None
+        assert fake.last_env.get(INVENTORY_ONLY_ENV) == "1"
 
 
 class TestMain:

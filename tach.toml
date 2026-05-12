@@ -14,6 +14,7 @@ depends_on = [{ path = "mkdocs_terok" }]
 [[interfaces]]
 from = ["mkdocs_terok"]
 expose = [
+  "INVENTORY_ONLY_ENV",
   "brand_css_path",
   "mermaid_zoom_js_path",
   "ci_map",

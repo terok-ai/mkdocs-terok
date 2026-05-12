@@ -25,12 +25,15 @@ sibling's own docs deploy is in its lifecycle.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+from mkdocs_terok import INVENTORY_ONLY_ENV
 
 #: Lines whose inventory URL matches this regex are stripped before the
 #: inventory build runs.  Both the legacy GitHub Pages location and the new
@@ -84,6 +87,12 @@ def build_inventory(*, config: Path, output: Path) -> None:
         patched_file.write(patched_text)
         patched_path = Path(patched_file.name)
 
+    # The terok plugin honors INVENTORY_ONLY_ENV to skip generators that
+    # don't feed objects.inv (test_map needs pytest, quality_report needs
+    # scc/vulture, …) — so a ``poetry install --only main,docs`` env can
+    # still produce an inventory.
+    env = {**os.environ, INVENTORY_ONLY_ENV: "1"}
+
     try:
         with tempfile.TemporaryDirectory(prefix="mkdocs-terok-inventory-") as tmp:
             site_dir = Path(tmp) / "site"
@@ -98,6 +107,7 @@ def build_inventory(*, config: Path, output: Path) -> None:
                     str(site_dir),
                 ],
                 check=True,
+                env=env,
             )
             produced = site_dir / "objects.inv"
             if not produced.is_file():

@@ -284,6 +284,74 @@ class TestOnFilesRefPages:
         assert "reference/SUMMARY.md" in uris
 
 
+class TestOnFilesInventoryOnly:
+    """``MKDOCS_TEROK_INVENTORY_ONLY=1`` skips heavy generators, keeps ref_pages."""
+
+    def test_skips_heavy_generators(self, monkeypatch) -> None:
+        """ci_map, quality_report, test_map, module_map are all bypassed."""
+        from mkdocs_terok import INVENTORY_ONLY_ENV
+
+        monkeypatch.setenv(INVENTORY_ONLY_ENV, "1")
+        ci = MagicMock(return_value="# CI\n")
+        qr = MagicMock(return_value=SimpleNamespace(markdown="# QR\n", companion_files={}))
+        tm = MagicMock(return_value="# TM\n")
+        mm = MagicMock(return_value="# MM\n")
+
+        plugin = _make_plugin(
+            ci_map=True,
+            quality_report=True,
+            test_map=True,
+            module_map=True,
+            quality_report_codecov_repo="x/y",
+        )
+        _run_on_files(
+            plugin,
+            _make_config(),
+            ("mkdocs_terok.ci_map.generate_ci_map", ci),
+            ("mkdocs_terok.quality_report.generate_quality_report", qr),
+            ("mkdocs_terok.test_map.generate_test_map", tm),
+            ("mkdocs_terok.module_map.generate_module_map", mm),
+        )
+
+        ci.assert_not_called()
+        qr.assert_not_called()
+        tm.assert_not_called()
+        mm.assert_not_called()
+
+    def test_keeps_ref_pages(self, monkeypatch) -> None:
+        """ref_pages still runs in inventory mode — every objects.inv entry is sourced from those pages."""
+        from mkdocs_terok import INVENTORY_ONLY_ENV
+
+        monkeypatch.setenv(INVENTORY_ONLY_ENV, "1")
+
+        def fake_generate(cfg, *, write_file, set_edit_path):
+            write_file("reference/x/index.md", "::: x")
+            return [(("x",), "reference/x/index.md")]
+
+        uris = _run_on_files(
+            _make_plugin(ref_pages=True),
+            _make_config(),
+            ("mkdocs_terok.ref_pages.generate_ref_pages", fake_generate),
+        )
+        assert "reference/x/index.md" in uris
+
+    def test_unset_env_runs_generators_normally(self, monkeypatch) -> None:
+        """Without the env var, the plugin behaves exactly as before."""
+        from mkdocs_terok import INVENTORY_ONLY_ENV
+
+        monkeypatch.delenv(INVENTORY_ONLY_ENV, raising=False)
+        tm = MagicMock(return_value="# TM\n")
+
+        uris = _run_on_files(
+            _make_plugin(test_map=True, test_map_integration_dir="tests"),
+            _make_config(),
+            ("mkdocs_terok.test_map.generate_test_map", tm),
+        )
+
+        tm.assert_called_once()
+        assert "test-map.md" in uris
+
+
 # ---------------------------------------------------------------------------
 # _build_literate_nav
 # ---------------------------------------------------------------------------

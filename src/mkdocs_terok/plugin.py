@@ -12,6 +12,7 @@ Asset injection (CSS / JS) is handled automatically via ``on_config``.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path, PurePosixPath
 
 from properdocs.config import config_options as c
@@ -20,7 +21,7 @@ from properdocs.config.defaults import ProperDocsConfig
 from properdocs.plugins import BasePlugin
 from properdocs.structure.files import File, Files
 
-from mkdocs_terok import brand_css_path, mermaid_zoom_js_path
+from mkdocs_terok import INVENTORY_ONLY_ENV, brand_css_path, mermaid_zoom_js_path
 
 log = logging.getLogger(f"properdocs.plugins.{__name__}")
 _LOG_GENERATED = "Generated %s"
@@ -97,7 +98,17 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
         return config
 
     def on_files(self, files: Files, /, *, config: ProperDocsConfig) -> Files:
-        """Generate virtual files for each enabled generator."""
+        """Generate virtual files for each enabled generator.
+
+        When [`INVENTORY_ONLY_ENV`][mkdocs_terok.INVENTORY_ONLY_ENV]
+        is set, the four generators that don't feed ``objects.inv``
+        (``ci_map``, ``quality_report``, ``test_map``, ``module_map``)
+        are skipped, so a stripped-down ``poetry install --only main,docs``
+        environment can still produce the inventory without ``pytest``,
+        ``scc``, ``vulture``, etc. on PATH.  ``ref_pages`` always runs
+        (when enabled in user config) because every inventory entry
+        comes from an mkdocstrings render of those pages.
+        """
         if self.config.inject_css:
             files.append(
                 File.generated(config, "_assets/extra.css", abs_src_path=str(brand_css_path()))
@@ -109,14 +120,18 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
                 )
             )
 
-        if self.config.ci_map:
-            self._generate_ci_map(files, config)
-        if self.config.quality_report:
-            self._generate_quality_report(files, config)
-        if self.config.test_map:
-            self._generate_test_map(files, config)
-        if self.config.module_map:
-            self._generate_module_map(files, config)
+        inventory_only = os.environ.get(INVENTORY_ONLY_ENV) == "1"
+
+        if not inventory_only:
+            if self.config.ci_map:
+                self._generate_ci_map(files, config)
+            if self.config.quality_report:
+                self._generate_quality_report(files, config)
+            if self.config.test_map:
+                self._generate_test_map(files, config)
+            if self.config.module_map:
+                self._generate_module_map(files, config)
+
         if self.config.ref_pages:
             self._generate_ref_pages(files, config)
 
