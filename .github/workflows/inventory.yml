@@ -13,7 +13,12 @@ on:
     branches: [master]
   workflow_dispatch:
 
-permissions: {}
+# `contents: read` here is required so the called reusable workflow can
+# request the same — GitHub Actions rejects a called workflow that asks
+# for permissions outside the caller's grant, which manifests as
+# ``startup_failure`` with no jobs spawned.
+permissions:
+  contents: read
 
 jobs:
   publish:
