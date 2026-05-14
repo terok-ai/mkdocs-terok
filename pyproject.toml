@@ -27,7 +27,7 @@ Homepage = "https://terok.ai/"
 Repository = "https://github.com/terok-ai/mkdocs-terok"
 Documentation = "https://terok-ai.github.io/mkdocs-terok/"
 Issues = "https://github.com/terok-ai/mkdocs-terok/issues"
-Changelog = "https://github.com/terok-ai/mkdocs-terok/releases"
+Changelog = "https://github.com/terok-ai/mkdocs-terok/blob/master/CHANGELOG.md"
 Security = "https://github.com/terok-ai/mkdocs-terok/security/policy"
 
 [project.entry-points."mkdocs.plugins"]
