@@ -2,20 +2,44 @@
 requires = ["poetry-core>=1.9.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
 build-backend = "poetry_dynamic_versioning.backend"
 
-[tool.poetry]
+[project]
 name = "mkdocs-terok"
-version = "0.6.0"
 description = "Shared ProperDocs documentation generators for terok projects"
 readme = "README.md"
 license = "0BSD"
-authors = ["Jiri Vyskocil <jiri@vyskocil.com>"]
+authors = [
+    {name = "Jiri Vyskocil", email = "jiri@vyskocil.com"},
+]
+maintainers = [
+    {name = "Jiri Vyskocil", email = "jiri@vyskocil.com"},
+]
 keywords = ["properdocs", "mkdocs", "documentation", "code-metrics", "ci-map"]
+requires-python = ">=3.12,<4.0"
+dynamic = ["version", "classifiers"]
+dependencies = [
+    "PyYAML>=6.0",
+    "properdocs>=1.6.7",
+    "squarify>=0.4",
+]
+
+[project.urls]
+Homepage = "https://terok.ai/"
+Repository = "https://github.com/terok-ai/mkdocs-terok"
+Documentation = "https://terok-ai.github.io/mkdocs-terok/"
+Issues = "https://github.com/terok-ai/mkdocs-terok/issues"
+Changelog = "https://github.com/terok-ai/mkdocs-terok/releases"
+Security = "https://github.com/terok-ai/mkdocs-terok/security/policy"
+
+[project.entry-points."mkdocs.plugins"]
+terok = "mkdocs_terok.plugin:TerokPlugin"
+
+[tool.poetry]
+version = "0.6.0"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Framework :: MkDocs",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python",
     "Topic :: Documentation",
@@ -30,19 +54,6 @@ include = [
   { path = "src/mkdocs_terok/_assets/*.css" },
   { path = "src/mkdocs_terok/_assets/*.js" },
 ]
-maintainers = ["Jiri Vyskocil <jiri@vyskocil.com>"]
-homepage = "https://terok.ai/"
-repository = "https://github.com/terok-ai/mkdocs-terok"
-documentation = "https://terok-ai.github.io/mkdocs-terok/"
-
-[tool.poetry.dependencies]
-python = ">=3.12,<4.0"
-PyYAML = ">=6.0"
-properdocs = ">=1.6.7"
-squarify = ">=0.4"
-
-[tool.poetry.plugins."mkdocs.plugins"]
-terok = "mkdocs_terok.plugin:TerokPlugin"
 
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.8"
@@ -55,11 +66,6 @@ pytest = ">=7.0"
 pytest-cov = ">=4.0"
 pydantic = ">=2.6"
 
-
-[tool.poetry.urls]
-Issues = "https://github.com/terok-ai/mkdocs-terok/issues"
-Changelog = "https://github.com/terok-ai/mkdocs-terok/releases"
-Security = "https://github.com/terok-ai/mkdocs-terok/security/policy"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
