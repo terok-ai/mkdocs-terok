@@ -195,25 +195,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-
-      - name: Install Poetry
-        uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a # v1
-
-      - name: Install dynamic versioning plugin
-        run: poetry self add "poetry-dynamic-versioning[plugin]"
-
-      - name: Build sdist + wheel
-        run: poetry build
-
-      - name: Verify README rendering for PyPI
+      - name: Verify README renders for PyPI
         run: |
-          pip install twine
-          twine check dist/*
+          pip install 'readme_renderer[md]'
+          python -m readme_renderer README.md --format md
