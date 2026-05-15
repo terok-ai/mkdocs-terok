@@ -34,7 +34,7 @@ Security = "https://github.com/terok-ai/mkdocs-terok/security/policy"
 terok = "mkdocs_terok.plugin:TerokPlugin"
 
 [tool.poetry]
-version = "0.6.0"
+version = "0.6.1a1"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
