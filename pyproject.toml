@@ -34,7 +34,6 @@ Security = "https://github.com/terok-ai/mkdocs-terok/security/policy"
 terok = "mkdocs_terok.plugin:TerokPlugin"
 
 [tool.poetry]
-version = "0.6.1a2"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -54,6 +53,7 @@ include = [
   { path = "src/mkdocs_terok/_assets/*.css" },
   { path = "src/mkdocs_terok/_assets/*.js" },
 ]
+version = "0.6.1a2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.8"
