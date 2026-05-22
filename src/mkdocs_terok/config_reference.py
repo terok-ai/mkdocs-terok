@@ -338,11 +338,6 @@ def _unwrap_section_model(field_info: FieldInfo) -> type[BaseModel] | None:
     return None
 
 
-def _is_section_field(field_info: FieldInfo) -> bool:
-    """Check if a field is a nested Pydantic section model."""
-    return _unwrap_section_model(field_info) is not None
-
-
 def _md_escape(text: str) -> str:
     """Escape characters that would break a Markdown table cell."""
     return text.replace("|", r"\|").replace("\n", " ")
