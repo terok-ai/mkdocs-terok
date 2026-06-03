@@ -1,5 +1,13 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://terok-ai.github.io/terok/terok-logo-w.svg">
+    <img src="https://terok-ai.github.io/terok/terok-logo-b.svg" alt="mkdocs-terok" width="120">
+  </picture>
+</p>
+
 # mkdocs-terok
 
+[![PyPI](https://img.shields.io/pypi/v/mkdocs-terok)](https://pypi.org/project/mkdocs-terok/)
 [![License: 0BSD](https://img.shields.io/badge/License-0BSD-green.svg)](https://opensource.org/license/0bsd)
 [![REUSE status](https://api.reuse.software/badge/github.com/terok-ai/mkdocs-terok)](https://api.reuse.software/info/github.com/terok-ai/mkdocs-terok)
 [![codecov](https://codecov.io/gh/terok-ai/mkdocs-terok/graph/badge.svg)](https://codecov.io/gh/terok-ai/mkdocs-terok)
