@@ -7,19 +7,19 @@
 Shared [ProperDocs](https://properdocs.org/) documentation generators for terok projects.
 
 Provides reusable modules for generating CI workflow maps, integration test maps,
-code quality reports, API reference pages, and config reference documentation from
+code metrics reports, API reference pages, and config reference documentation from
 Pydantic models. A built-in `terok` ProperDocs plugin drives all generators
 automatically; the generator modules themselves never import the doc engine and can
 also be used standalone via `mkdocs-gen-files` shims.
 
-The quality report module can optionally parse output from
+The metrics report module can optionally parse output from
 [scc](https://github.com/boyter/scc),
 [complexipy](https://github.com/rohaquinern/complexipy),
 [tach](https://github.com/gauge-sh/tach),
 [vulture](https://github.com/jendrikseipp/vulture), and
 [docstr-coverage](https://github.com/HunterMcGushion/docstr_coverage).
 When any of these tools is absent, the corresponding report section degrades
-gracefully to a warning admonition.
+gracefully to a warning.
 
 ## Installation
 
@@ -31,17 +31,12 @@ Add to your project as a docs-build dependency.
 pip install mkdocs-terok
 ```
 
-**uv**:
-
-```bash
-uv add --group docs mkdocs-terok
-```
 
 **Poetry** — `pyproject.toml`:
 
 ```toml
 [tool.poetry.group.docs.dependencies]
-mkdocs-terok = "^0.6"
+mkdocs-terok = "^0.7"
 ```
 
 ## Configuration

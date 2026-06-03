@@ -4,9 +4,8 @@ Shared [ProperDocs](https://properdocs.org/) documentation generators for terok 
 
 ## Overview
 
-`mkdocs-terok` ships a **`terok` ProperDocs plugin** that drives all built-in
-generators automatically — no shim scripts required. For advanced or
-consumer-specific use cases the generator modules remain public and can be
+`mkdocs-terok` is a **`terok` ProperDocs plugin** containig several documentation generators.
+For advanced use cases the generator modules are public and can be
 called directly via [`mkdocs-gen-files`](https://github.com/oprypin/mkdocs-gen-files).
 
 ## Quick start — plugin
