@@ -616,21 +616,37 @@ def _section_complexity(cfg: CodeMetricsConfig) -> str:
         return f"!!! warning\n    complexipy failed; skipping complexity report.\n\n```\n{output}\n```\n"
 
     cache_dir = cfg.root / ".complexipy_cache"
-    cache_files = sorted(cache_dir.glob("*.json")) if cache_dir.is_dir() else []
-    if not cache_files:
-        return "!!! warning\n    complexipy cache not found — skipping complexity report.\n"
+    
+    # Try new cache format first (complexipy >= 5.x): .complexipy_cache/v/cache/functions
+    new_cache_file = cache_dir / "v" / "cache" / "functions"
+    if new_cache_file.is_file():
+        try:
+            data = json.loads(new_cache_file.read_text(encoding="utf-8"))
+            # New format: {"entries": {"hash": {"functions": [...]}}}
+            functions: list[dict] = []
+            for entry in data.get("entries", {}).values():
+                if isinstance(entry, dict):
+                    functions.extend(entry.get("functions", []))
+        except (json.JSONDecodeError, OSError):
+            return "!!! warning\n    complexipy cache is invalid JSON — skipping complexity report.\n"
+    else:
+        # Fall back to old cache format: .complexipy_cache/*.json
+        cache_files = sorted(cache_dir.glob("*.json")) if cache_dir.is_dir() else []
+        if not cache_files:
+            return "!!! warning\n    complexipy cache not found — skipping complexity report.\n"
 
-    latest_cache = max(cache_files, key=lambda p: p.stat().st_mtime)
-    try:
-        data = json.loads(latest_cache.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return "!!! warning\n    complexipy cache is invalid JSON — skipping complexity report.\n"
+        latest_cache = max(cache_files, key=lambda p: p.stat().st_mtime)
+        try:
+            data = json.loads(latest_cache.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return "!!! warning\n    complexipy cache is invalid JSON — skipping complexity report.\n"
 
-    functions = [
-        f
-        for f in data.get("functions", [])
-        if isinstance(f, dict) and isinstance(f.get("complexity"), (int, float))
-    ]
+        # Old format: {"functions": [...]}
+        functions = [
+            f
+            for f in data.get("functions", [])
+            if isinstance(f, dict) and isinstance(f.get("complexity"), (int, float))
+        ]
     if not functions:
         return "No functions found.\n"
 
