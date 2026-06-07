@@ -616,7 +616,7 @@ def _section_complexity(cfg: CodeMetricsConfig) -> str:
         return f"!!! warning\n    complexipy failed; skipping complexity report.\n\n```\n{output}\n```\n"
 
     cache_dir = cfg.root / ".complexipy_cache"
-    
+
     # Try new cache format first (complexipy >= 5.x): .complexipy_cache/v/cache/functions
     new_cache_file = cache_dir / "v" / "cache" / "functions"
     if new_cache_file.is_file():
