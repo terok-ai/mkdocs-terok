@@ -299,6 +299,53 @@ def test_complexity_renders_histogram_with_v5_cache_format(tmp_path: Path) -> No
     assert "3" in result
 
 
+def test_complexity_v5_cache_invalid_json(tmp_path: Path) -> None:
+    """New v5 cache with invalid JSON should emit warning."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "tests").mkdir()
+    cache_dir = tmp_path / ".complexipy_cache" / "v" / "cache"
+    cache_dir.mkdir(parents=True)
+    (cache_dir / "functions").write_text("{not valid json")
+
+    cfg = CodeMetricsConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
+    with patch("mkdocs_terok.code_metrics._run", return_value=_ok()):
+        result = _section_complexity(cfg)
+
+    assert "!!! warning" in result
+    assert "invalid JSON" in result
+
+
+def test_complexity_legacy_cache_invalid_json(tmp_path: Path) -> None:
+    """Legacy cache with invalid JSON should emit warning."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "tests").mkdir()
+    cache_dir = tmp_path / ".complexipy_cache"
+    cache_dir.mkdir()
+    (cache_dir / "result.json").write_text("{not valid json")
+
+    cfg = CodeMetricsConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
+    with patch("mkdocs_terok.code_metrics._run", return_value=_ok()):
+        result = _section_complexity(cfg)
+
+    assert "!!! warning" in result
+    assert "invalid JSON" in result
+
+
+def test_complexity_no_functions_in_cache(tmp_path: Path) -> None:
+    """Cache with empty functions list should report no functions found."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "tests").mkdir()
+    cache_dir = tmp_path / ".complexipy_cache" / "v" / "cache"
+    cache_dir.mkdir(parents=True)
+    (cache_dir / "functions").write_text(json.dumps({"entries": {}}))
+
+    cfg = CodeMetricsConfig(root=tmp_path, src_dir=tmp_path / "src", tests_dir=tmp_path / "tests")
+    with patch("mkdocs_terok.code_metrics._run", return_value=_ok()):
+        result = _section_complexity(cfg)
+
+    assert "No functions found" in result
+
+
 def test_dead_code_renders_table_when_vulture_finds_issues(tmp_path: Path) -> None:
     """Dead code section should render a table when vulture reports findings."""
     (tmp_path / "src").mkdir()
