@@ -628,7 +628,9 @@ def _section_complexity(cfg: CodeMetricsConfig) -> str:
                 if isinstance(entry, dict):
                     functions.extend(entry.get("functions", []))
         except (json.JSONDecodeError, OSError):
-            return "!!! warning\n    complexipy cache is invalid JSON — skipping complexity report.\n"
+            return (
+                "!!! warning\n    complexipy cache is invalid JSON — skipping complexity report.\n"
+            )
     else:
         # Fall back to old cache format: .complexipy_cache/*.json
         cache_files = sorted(cache_dir.glob("*.json")) if cache_dir.is_dir() else []
@@ -639,7 +641,9 @@ def _section_complexity(cfg: CodeMetricsConfig) -> str:
         try:
             data = json.loads(latest_cache.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
-            return "!!! warning\n    complexipy cache is invalid JSON — skipping complexity report.\n"
+            return (
+                "!!! warning\n    complexipy cache is invalid JSON — skipping complexity report.\n"
+            )
 
         # Old format: {"functions": [...]}
         functions = [
