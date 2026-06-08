@@ -1,4 +1,11 @@
 # Changelog
+## v0.7.1 — Complexipy Cache
+
+## What's Changed
+* fix: handle complexipy v5.x cache format in https://github.com/terok-ai/mkdocs-terok/pull/88
+
+**Full Changelog**: https://github.com/terok-ai/mkdocs-terok/compare/v0.7.0...v0.7.1
+
 ## v0.7.0 — The Emissary
 
 ## What's Changed
