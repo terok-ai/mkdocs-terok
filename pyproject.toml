@@ -53,7 +53,7 @@ include = [
   { path = "src/mkdocs_terok/_assets/*.css" },
   { path = "src/mkdocs_terok/_assets/*.js" },
 ]
-version = "0.7.0"
+version = "0.7.1"
 
 [tool.poetry.group.dev.dependencies]
 ruff = ">=0.8"
