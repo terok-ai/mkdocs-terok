@@ -61,7 +61,7 @@ jobs:
         run: poetry self add "poetry-dynamic-versioning[plugin]>=1.0.0,<2.0.0"
 
       - name: Load cached venv
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .venv
           key: venv-inventory-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/pyproject.toml', '**/poetry.lock') }}
