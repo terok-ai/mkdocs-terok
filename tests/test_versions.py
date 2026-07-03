@@ -92,6 +92,17 @@ class TestDeploy:
         with pytest.raises(ValueError, match="unsafe tree directory name"):
             deploy(site=site, tree=tree, version="0.8", aliases=[name])
 
+    def test_refuses_a_tree_that_is_not_a_docs_tree(self, site: Path, tmp_path: Path) -> None:
+        """A non-empty --tree without the versions.json marker must not be touched."""
+        not_a_tree = tmp_path / "home"
+        (not_a_tree / "Documents").mkdir(parents=True)
+        (not_a_tree / "Documents" / "thesis.txt").write_text("precious")
+
+        with pytest.raises(ValueError, match="not a versioned docs tree"):
+            deploy(site=site, tree=not_a_tree, version="Documents")
+
+        assert (not_a_tree / "Documents" / "thesis.txt").read_text() == "precious"
+
     def test_stale_version_files_are_dropped(self, site: Path, tmp_path: Path) -> None:
         """Redeploying a version removes files the new build no longer produces."""
         tree = tmp_path / "tree"

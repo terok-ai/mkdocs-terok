@@ -52,17 +52,17 @@ on:
 
 permissions: {}
 
-# One tree mutation at a time per repo: a master `dev` deploy racing a
-# release deploy would clobber the other's gh-pages push.
-concurrency:
-  group: versioned-docs-${{ github.repository }}
-  cancel-in-progress: false
-
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # One tree mutation at a time per repo: a master `dev` deploy racing
+    # a release deploy would clobber the other's gh-pages push.  Job-level
+    # because workflow-level concurrency is ignored under workflow_call.
+    concurrency:
+      group: versioned-docs-${{ github.repository }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
 

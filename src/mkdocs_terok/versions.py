@@ -75,8 +75,11 @@ def deploy(
     Raises:
         ValueError: *version* or an alias is not a plain directory name
             (path separators, a leading dot, or empty), which would let a
-            crafted CLI argument write outside the tree.
+            crafted CLI argument write outside the tree; or *tree* points
+            at an existing non-empty directory that carries no
+            ``versions.json`` marker (mispointed ``--tree``).
     """
+    _ensure_docs_tree(tree)
     version_dir = _tree_dir(tree, version)
     alias_dirs = [_tree_dir(tree, alias) for alias in aliases]
     entries = _upsert(
@@ -129,6 +132,23 @@ def _default_target(entries: list[dict]) -> str:
     if any("latest" in entry["aliases"] for entry in entries):
         return "latest"
     return entries[0]["version"] if entries else "dev"
+
+
+def _ensure_docs_tree(tree: Path) -> None:
+    """Refuse to deploy into a directory that isn't a versioned docs tree.
+
+    Deploying replaces version directories wholesale, so a mispointed
+    ``--tree`` (a home directory, a source checkout) must not cost data.
+    Legitimate trees are exactly what the publish workflow produces: a
+    not-yet-existing or empty directory (fresh ``gh-pages`` worktree) or
+    one carrying the ``versions.json`` marker from a previous deploy.
+
+    Raises:
+        ValueError: *tree* exists, is non-empty, and has no marker.
+    """
+    if not tree.exists() or not any(tree.iterdir()) or (tree / _VERSIONS_FILE).is_file():
+        return
+    raise ValueError(f"not a versioned docs tree (non-empty, no {_VERSIONS_FILE}): {tree}")
 
 
 def _tree_dir(tree: Path, name: str) -> Path:
