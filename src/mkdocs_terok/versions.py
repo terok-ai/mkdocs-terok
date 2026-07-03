@@ -24,11 +24,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 from collections.abc import Sequence
 from pathlib import Path
 
 _VERSIONS_FILE = "versions.json"
+
+#: Version and alias names become directory names inside the tree, so they
+#: must be single path components — no separators, no leading dot (which
+#: also rules out ``..``).
+_SAFE_COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 _ROOT_REDIRECT = """\
 <!DOCTYPE html>
@@ -65,7 +71,15 @@ def deploy(
             (``0.8.2``).  Defaults to *version*.
         aliases: Alias directories re-pointed at this version
             (typically ``latest``).
+
+    Raises:
+        ValueError: *version* or an alias is not a plain directory name
+            (path separators, a leading dot, or empty), which would let a
+            crafted CLI argument write outside the tree.
     """
+    for name in (version, *aliases):
+        if not _SAFE_COMPONENT.fullmatch(name):
+            raise ValueError(f"unsafe tree directory name: {name!r}")
     entries = _upsert(
         _load_entries(tree), version=version, title=title or version, aliases=list(aliases)
     )

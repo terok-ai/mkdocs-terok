@@ -83,6 +83,15 @@ class TestDeploy:
         assert [entry["title"] for entry in _entries(tree)] == ["0.8.1"]
         assert (tree / "0.8" / "index.html").read_text() == "<h1>0.8.1 docs</h1>"
 
+    @pytest.mark.parametrize("name", ["../escape", "a/b", "..", ".hidden", ""])
+    def test_rejects_unsafe_directory_names(self, site: Path, tmp_path: Path, name: str) -> None:
+        """Version and alias names must be plain directory names — no traversal."""
+        tree = tmp_path / "tree"
+        with pytest.raises(ValueError, match="unsafe tree directory name"):
+            deploy(site=site, tree=tree, version=name)
+        with pytest.raises(ValueError, match="unsafe tree directory name"):
+            deploy(site=site, tree=tree, version="0.8", aliases=[name])
+
     def test_stale_version_files_are_dropped(self, site: Path, tmp_path: Path) -> None:
         """Redeploying a version removes files the new build no longer produces."""
         tree = tmp_path / "tree"
