@@ -36,6 +36,10 @@ jobs:
         with:
           args: format --check
 
+      - name: ASCII-only pyproject
+        run: |
+          ! LC_ALL=C grep -nP '[^\x00-\x7F]' pyproject.toml
+
       # Stdlib-only (tomllib + re); ubuntu-latest's stock python3 is 3.12+,
       # tomllib is stdlib since 3.11 — no setup-python step needed.
       - name: README install snippet ↔ pyproject version
