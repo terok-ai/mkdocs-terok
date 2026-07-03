@@ -1,0 +1,143 @@
+# SPDX-FileCopyrightText: 2026 Jiri Vyskocil
+# SPDX-License-Identifier: 0BSD
+
+# Reusable workflow: install a built docs site into the calling repo's
+# versioned gh-pages tree and push it.  The tree follows the mike layout
+# (one directory per version, `versions.json` at the root driving
+# Material's version chooser, alias directories like `latest/`, and a
+# root redirect) — maintained by `mkdocs_terok.versions` because mike
+# itself cannot drive ProperDocs builds.
+#
+# The caller builds its site exactly as before (ProperDocs, coverage
+# treemap and all) and uploads it as a regular artifact; only the tree
+# shuffle is shared here.  Like publish-inventory.yml, the python module
+# runs from the calling repo's locked docs environment, so the caller's
+# mkdocs-terok pin decides which version of the tree logic applies.
+#
+# The calling job must grant `contents: write` (gh-pages push) and the
+# repo's Pages source must be "deploy from branch: gh-pages".
+#
+# Pin third-party actions to full commit SHAs.  GitHub-owned actions
+# (actions/*) may use version tags.
+
+name: Publish versioned docs (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Version directory and chooser id (e.g. `0.8` or `dev`)"
+        type: string
+        required: true
+      title:
+        description: "Chooser label (e.g. `0.8.2`); defaults to the version"
+        type: string
+        default: ""
+      aliases:
+        description: "Space-separated alias directories re-pointed at this version (e.g. `latest`)"
+        type: string
+        default: ""
+      site-artifact:
+        description: "Name of the uploaded artifact holding the built site"
+        type: string
+        default: "docs-site"
+      python-version:
+        description: "Python version used to run the tree maintainer"
+        type: string
+        default: "3.12"
+      poetry-install-args:
+        description: "Args passed to ``poetry install``.  Default uses ``--only`` to skip dev/test groups, which often pull system-dep'd build-from-source packages that aren't needed to run `mkdocs_terok.versions`."
+        type: string
+        default: "--only main,docs --no-interaction"
+
+permissions: {}
+
+# One tree mutation at a time per repo: a master `dev` deploy racing a
+# release deploy would clobber the other's gh-pages push.
+concurrency:
+  group: versioned-docs-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@a783c322200f0519c7926aa6faa857c4e23e9263 # v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install dynamic versioning plugin
+        run: poetry self add "poetry-dynamic-versioning[plugin]>=1.0.0,<2.0.0"
+
+      - name: Load cached venv
+        uses: actions/cache@v6
+        with:
+          path: .venv
+          key: venv-versioned-docs-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/pyproject.toml', '**/poetry.lock') }}
+
+      - name: Install dependencies
+        env:
+          INSTALL_ARGS: ${{ inputs.poetry-install-args }}
+        run: poetry install $INSTALL_ARGS
+
+      - name: Download built site
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.site-artifact }}
+          path: ${{ runner.temp }}/site
+
+      # The tree accumulates on gh-pages; a worktree keeps it apart from
+      # the default-branch checkout that carries the poetry environment.
+      - name: Check out the docs tree (gh-pages)
+        run: |
+          set -euo pipefail
+          if git fetch origin +gh-pages:refs/remotes/origin/gh-pages; then
+            git worktree add -B gh-pages tree origin/gh-pages
+          else
+            git worktree add --orphan -b gh-pages tree
+          fi
+
+      - name: Install site into the tree
+        env:
+          VERSION: ${{ inputs.version }}
+          TITLE: ${{ inputs.title }}
+          ALIASES: ${{ inputs.aliases }}
+        run: |
+          set -euo pipefail
+          args=(--site "$RUNNER_TEMP/site" --tree tree --version "$VERSION")
+          if [[ -n "$TITLE" ]]; then
+            args+=(--title "$TITLE")
+          fi
+          for alias in $ALIASES; do
+            args+=(--alias "$alias")
+          done
+          poetry run python -m mkdocs_terok.versions "${args[@]}"
+
+      - name: Push the docs tree
+        env:
+          VERSION: ${{ inputs.version }}
+          TITLE: ${{ inputs.title }}
+        run: |
+          set -euo pipefail
+          cd tree
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Tree unchanged — nothing to publish."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "docs: publish ${VERSION}${TITLE:+ (${TITLE})}"
+          git push origin gh-pages

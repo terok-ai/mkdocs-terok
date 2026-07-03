@@ -47,11 +47,20 @@ _SIBLING_INVENTORY_URL = re.compile(
     r")"
 )
 
-#: Matches a YAML list item whose value is a sibling inventory URL,
-#: e.g. ``    - https://terok-ai.github.io/terok-sandbox/objects.inv``.
-#: Anchored on ``- `` so plain dependency-list URLs elsewhere in the
-#: file (which never start with ``- ``) are left untouched.
-_INVENTORY_LINE = re.compile(rf"^\s*-\s+{_SIBLING_INVENTORY_URL.pattern}\S*\s*$")
+#: Matches a YAML list item whose value is a sibling inventory URL — the
+#: bare form (``- https://terok-ai.github.io/terok-sandbox/objects.inv``)
+#: or the single-line flow-mapping form consumers use to carry an explicit
+#: link base (``- { url: https://raw.githubusercontent.com/..., base_url:
+#: https://terok-ai.github.io/terok-sandbox/ }``).  Anchored on ``- `` so
+#: plain dependency-list URLs elsewhere in the file (which never start
+#: with ``- ``) are left untouched.
+_INVENTORY_LINE = re.compile(
+    rf"^\s*-\s+(?:"
+    rf"{_SIBLING_INVENTORY_URL.pattern}\S*"
+    rf"|"
+    rf"\{{.*{_SIBLING_INVENTORY_URL.pattern}.*\}}"
+    rf")\s*$"
+)
 
 
 def build_inventory(*, config: Path, output: Path) -> None:
