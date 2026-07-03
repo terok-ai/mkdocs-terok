@@ -77,16 +77,15 @@ def deploy(
             (path separators, a leading dot, or empty), which would let a
             crafted CLI argument write outside the tree.
     """
-    for name in (version, *aliases):
-        if not _SAFE_COMPONENT.fullmatch(name):
-            raise ValueError(f"unsafe tree directory name: {name!r}")
+    version_dir = _tree_dir(tree, version)
+    alias_dirs = [_tree_dir(tree, alias) for alias in aliases]
     entries = _upsert(
         _load_entries(tree), version=version, title=title or version, aliases=list(aliases)
     )
     tree.mkdir(parents=True, exist_ok=True)
-    _replace_dir(site, tree / version)
-    for alias in aliases:
-        _replace_dir(tree / version, tree / alias)
+    _replace_dir(site, version_dir)
+    for alias_dir in alias_dirs:
+        _replace_dir(version_dir, alias_dir)
     (tree / _VERSIONS_FILE).write_text(json.dumps(entries, indent=2) + "\n")
     (tree / "index.html").write_text(_ROOT_REDIRECT.format(target=_default_target(entries)))
     (tree / ".nojekyll").touch()
@@ -130,6 +129,25 @@ def _default_target(entries: list[dict]) -> str:
     if any("latest" in entry["aliases"] for entry in entries):
         return "latest"
     return entries[0]["version"] if entries else "dev"
+
+
+def _tree_dir(tree: Path, name: str) -> Path:
+    """Resolve *name* as a directory directly inside *tree*, or refuse.
+
+    Version and alias names come from CLI arguments and become directory
+    names, so anything that isn't a plain path component (separators, a
+    leading dot — which also rules out ``..``) is rejected, and the
+    resolved path must stay a direct child of the tree.
+
+    Raises:
+        ValueError: *name* would land outside (or on) the tree root.
+    """
+    if not _SAFE_COMPONENT.fullmatch(name):
+        raise ValueError(f"unsafe tree directory name: {name!r}")
+    candidate = (tree / name).resolve()
+    if not candidate.is_relative_to(tree.resolve()) or candidate == tree.resolve():
+        raise ValueError(f"unsafe tree directory name: {name!r}")
+    return candidate
 
 
 def _replace_dir(source: Path, target: Path) -> None:
