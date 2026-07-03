@@ -16,10 +16,12 @@ maintainers = [
 keywords = ["properdocs", "mkdocs", "documentation", "code-metrics", "ci-map"]
 requires-python = ">=3.12,<4.0"
 dynamic = ["version", "classifiers"]
+# Dependency pins follow the policy in AGENTS.md ("Dependency Pinning &
+# pyproject.toml Hygiene").  Keep the dependency list comment-free.
 dependencies = [
-    "PyYAML>=6.0",
-    "properdocs>=1.6.7",
-    "squarify>=0.4",
+    "PyYAML~=6.0",
+    "properdocs~=1.6.7",
+    "squarify==0.4.4",
 ]
 
 [project.urls]
