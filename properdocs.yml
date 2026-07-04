@@ -54,6 +54,7 @@ plugins:
 
 nav:
   - Home: index.md
+  - Versioned Docs Publishing: versioned-docs.md
   - API Reference: reference/
   - CI Map: ci-map.md
   - Quality Report: code-metrics.md
