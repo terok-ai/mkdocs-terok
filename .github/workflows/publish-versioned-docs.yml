@@ -37,6 +37,10 @@ on:
         description: "How many newest minors to serve; older releases stay downloadable as assets"
         type: number
         default: 6
+      root-assets:
+        description: "Space-separated site-relative files copied from the dev build to the served tree's root — well-known URLs that must survive versioning (e.g. logos hotlinked by READMEs on GitHub and PyPI)"
+        type: string
+        default: ""
       python-version:
         description: "Python version used to run the assembler"
         type: string
@@ -191,7 +195,11 @@ jobs:
                 --output "$RUNNER_TEMP/tarballs/$minor.tar.gz"
             done
 
+      # $ROOT_ASSETS expands unquoted on purpose: the input is a
+      # space-separated list feeding the CLI's nargs="*" flag.
       - name: Assemble the site tree
+        env:
+          ROOT_ASSETS: ${{ inputs.root-assets }}
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/snapshots"
@@ -203,7 +211,8 @@ jobs:
             --dev "$RUNNER_TEMP/dev-site" \
             --snapshots "$RUNNER_TEMP/snapshots" \
             --plan plan.json \
-            --out "$RUNNER_TEMP/tree"
+            --out "$RUNNER_TEMP/tree" \
+            --root-assets $ROOT_ASSETS
 
       - name: Setup Pages
         uses: actions/configure-pages@v6
