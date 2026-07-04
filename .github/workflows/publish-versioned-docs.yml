@@ -64,7 +64,12 @@ jobs:
       group: versioned-docs-${{ github.repository }}
       cancel-in-progress: false
     steps:
+      # Read-only checkout: later steps run third-party code (poetry
+      # install) and all gh/git access goes through the GH_TOKEN env,
+      # so the token must not linger in git config.
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         id: setup-python

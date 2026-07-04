@@ -37,6 +37,10 @@ DOCS_ASSET = "docs-site.tar.gz"
 #: Final releases only — alphas never reach PyPI and mint no docs.
 _FINAL_TAG = re.compile(r"v(\d+)\.(\d+)\.(\d+)")
 
+#: Minors become directory names inside the tree; anything else in a
+#: ``--plan`` file (path separators, ``..``) must not reach a path join.
+_MINOR = re.compile(r"\d+\.\d+")
+
 _ROOT_REDIRECT = """\
 <!DOCTYPE html>
 <html>
@@ -92,14 +96,18 @@ def assemble(*, dev_site: Path, snapshots: Path, entries: list[dict], out: Path)
         dev_site: Freshly built ProperDocs output for master.
         snapshots: Directory holding one unpacked snapshot per served
             minor (``snapshots/<minor>/``), as planned by
-            [`mkdocs_terok.versions.plan`][].
+            [`plan`][mkdocs_terok.versions.plan].
         entries: The plan — newest minor first.
         out: Tree to create; replaced wholesale if it exists.
 
     Raises:
-        ValueError: *out* points at an existing non-empty directory that
-            is not a previously assembled tree (mispointed ``--out``).
+        ValueError: an entry's ``minor`` is not a plain ``X.Y`` name, or
+            *out* points at an existing non-empty directory that is not
+            a previously assembled tree (mispointed ``--out``).
     """
+    for entry in entries:
+        if not _MINOR.fullmatch(entry["minor"]):
+            raise ValueError(f"unsafe minor in plan: {entry['minor']!r}")
     _ensure_replaceable(out)
     if out.exists():
         shutil.rmtree(out)

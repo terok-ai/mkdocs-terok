@@ -95,6 +95,15 @@ class TestAssemble:
         assert "url=dev/" in (out / "index.html").read_text()
         assert [e["version"] for e in json.loads((out / "versions.json").read_text())] == ["dev"]
 
+    @pytest.mark.parametrize("minor", ["../escape", "a/b", "..", "0.9x", ""])
+    def test_rejects_unsafe_minor_in_plan(self, dev_site: Path, tmp_path: Path, minor: str) -> None:
+        """A hand-crafted --plan must not steer moves outside the tree."""
+        entries = [{"minor": minor, "tag": "v0.9.0"}]
+        with pytest.raises(ValueError, match="unsafe minor in plan"):
+            assemble(
+                dev_site=dev_site, snapshots=tmp_path / "none", entries=entries, out=tmp_path / "t"
+            )
+
     def test_refuses_out_that_is_not_an_assembled_tree(
         self, dev_site: Path, tmp_path: Path
     ) -> None:
