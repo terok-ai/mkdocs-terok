@@ -17,6 +17,13 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
 
+# "mike" names the versions.json contract, not the tool: the deployed
+# versioned tree is assembled by mkdocs_terok.versions via the
+# publish-versioned-docs.yml reusable workflow.
+extra:
+  version:
+    provider: mike
+
 plugins:
   - search
   - terok:

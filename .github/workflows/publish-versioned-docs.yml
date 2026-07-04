@@ -1,0 +1,184 @@
+# SPDX-FileCopyrightText: 2026 Jiri Vyskocil
+# SPDX-License-Identifier: 0BSD
+
+# Reusable workflow: publish the calling repo's versioned docs site.
+# Stateless model — every deploy rebuilds the whole served tree from
+# immutable per-release snapshot assets (docs-site.tar.gz) plus the
+# fresh /dev/ build the caller hands over as the `docs-site` artifact;
+# versions.json (Material's chooser contract) is derived from the
+# release list.  Nothing persists between deploys: no gh-pages branch,
+# no history, and retention is just the `keep` parameter.
+#
+# On a release call (`release: true`, running on the tag ref) the same
+# job first ships the built site as the tag's snapshot asset, so the
+# subsequent plan step already sees the new release.
+#
+# Like publish-inventory.yml, the selection/layout logic runs from the
+# calling repo's locked docs environment (mkdocs_terok.versions), so the
+# caller's mkdocs-terok pin decides which version of it applies.
+#
+# The calling job must grant `contents: write` (release-asset upload),
+# `pages: write` and `id-token: write`; the repo's github-pages
+# environment must allow deployments from v* tags.
+#
+# Pin third-party actions to full commit SHAs.  GitHub-owned actions
+# (actions/*) may use version tags.
+
+name: Publish versioned docs (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      release:
+        description: "Ship the built site as the tag's snapshot asset before deploying (run on a final v*.*.* tag ref)"
+        type: boolean
+        default: false
+      keep:
+        description: "How many newest minors to serve; older releases stay downloadable as assets"
+        type: number
+        default: 6
+      python-version:
+        description: "Python version used to run the assembler"
+        type: string
+        default: "3.12"
+      poetry-install-args:
+        description: "Args passed to ``poetry install``.  Default uses ``--only`` to skip dev/test groups, which often pull system-dep'd build-from-source packages that aren't needed to run `mkdocs_terok.versions`."
+        type: string
+        default: "--only main,docs --no-interaction"
+
+permissions: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # One deploy at a time per repo; a superseded assembly would only
+    # redo identical work, so don't cancel mid-flight.
+    concurrency:
+      group: versioned-docs-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      # Read-only checkout: later steps run third-party code (poetry
+      # install) and all gh/git access goes through the GH_TOKEN env,
+      # so the token must not linger in git config.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@a783c322200f0519c7926aa6faa857c4e23e9263 # v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install dynamic versioning plugin
+        run: poetry self add "poetry-dynamic-versioning[plugin]>=1.0.0,<2.0.0"
+
+      - name: Load cached venv
+        uses: actions/cache@v6
+        with:
+          path: .venv
+          key: venv-versioned-docs-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/pyproject.toml', '**/poetry.lock') }}
+
+      - name: Install dependencies
+        env:
+          INSTALL_ARGS: ${{ inputs.poetry-install-args }}
+        run: poetry install $INSTALL_ARGS
+
+      - name: Download built site
+        uses: actions/download-artifact@v8
+        with:
+          name: docs-site
+          path: ${{ runner.temp }}/dev-site
+
+      # Final vX.Y.Z tags only: alphas never reach pypi-publish, so a
+      # non-final ref here is a mis-dispatch and fails loudly rather
+      # than minting a docs version.  Snapshot tarballs hold the site
+      # contents at the archive root.
+      - name: Ship the release snapshot asset
+        if: inputs.release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release docs publish requires a final v*.*.* tag ref (got: $GITHUB_REF_NAME)" >&2
+            exit 1
+          fi
+          tar -czf docs-site.tar.gz -C "$RUNNER_TEMP/dev-site" .
+          gh release upload "$GITHUB_REF_NAME" docs-site.tar.gz --clobber --repo "$GITHUB_REPOSITORY"
+          rm docs-site.tar.gz
+
+      # plan.json lives in the workspace so hashFiles() can key the
+      # snapshot cache on it.
+      - name: Plan served snapshots from the release list
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP: ${{ inputs.keep }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --paginate \
+            > "$RUNNER_TEMP/releases.json"
+          poetry run python -m mkdocs_terok.versions plan \
+            --releases "$RUNNER_TEMP/releases.json" --keep "$KEEP" \
+            | tee plan.json
+
+      # Snapshot tarballs are immutable per tag, so the download is
+      # skipped entirely until the served set changes.
+      - name: Restore cached snapshot tarballs
+        id: snapshot-cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/tarballs
+          key: versioned-docs-snapshots-${{ hashFiles('plan.json') }}
+
+      - name: Download served snapshots
+        if: steps.snapshot-cache.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tarballs"
+          jq -r '.[] | "\(.minor) \(.tag)"' plan.json \
+          | while read -r minor tag; do
+              gh release download "$tag" --pattern docs-site.tar.gz \
+                --output "$RUNNER_TEMP/tarballs/$minor.tar.gz"
+            done
+
+      - name: Assemble the site tree
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/snapshots"
+          jq -r '.[].minor' plan.json | while read -r minor; do
+            mkdir "$RUNNER_TEMP/snapshots/$minor"
+            tar -xzf "$RUNNER_TEMP/tarballs/$minor.tar.gz" -C "$RUNNER_TEMP/snapshots/$minor"
+          done
+          poetry run python -m mkdocs_terok.versions assemble \
+            --dev "$RUNNER_TEMP/dev-site" \
+            --snapshots "$RUNNER_TEMP/snapshots" \
+            --plan plan.json \
+            --out "$RUNNER_TEMP/tree"
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ runner.temp }}/tree
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

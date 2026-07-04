@@ -18,6 +18,15 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
+  # release.yml calls this after a successful PyPI publish: the same build
+  # runs on the tag ref and lands in the versioned tree as /<minor>/ with
+  # the `latest` alias, instead of /dev/.
+  workflow_call:
+    inputs:
+      release:
+        description: "Publish as the release version derived from the tag ref (instead of dev)"
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -27,7 +36,7 @@ concurrency:
 
 jobs:
   build:
-    if: github.repository == 'terok-ai/mkdocs-terok' && github.ref == 'refs/heads/master'
+    if: github.repository == 'terok-ai/mkdocs-terok' && (github.ref == 'refs/heads/master' || inputs.release)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -123,22 +132,21 @@ jobs:
       - name: Build documentation
         run: poetry run properdocs build --strict
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v5
+      - name: Upload site for versioned publish
+        uses: actions/upload-artifact@v7
         with:
+          name: docs-site
           path: site/
 
-  deploy:
-    if: github.repository == 'terok-ai/mkdocs-terok' && github.ref == 'refs/heads/master'
+  # Local reference: this repo ships the reusable workflow, so it consumes
+  # its own copy — consumers pin it by tag instead.
+  publish:
+    if: github.repository == 'terok-ai/mkdocs-terok' && (github.ref == 'refs/heads/master' || inputs.release)
     needs: build
-    runs-on: ubuntu-latest
     permissions:
+      contents: write
       pages: write
       id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+    uses: ./.github/workflows/publish-versioned-docs.yml
+    with:
+      release: ${{ inputs.release == true }}

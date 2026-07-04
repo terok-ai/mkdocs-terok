@@ -71,6 +71,27 @@ class TestStripSiblingInventoryLines:
         """)
         assert _strip_sibling_inventory_lines(text) == text
 
+    def test_strips_flow_mapping_entries(self) -> None:
+        """``- { url: ..., base_url: ... }`` sibling entries disappear whole."""
+        text = textwrap.dedent("""\
+            inventories:
+              - https://docs.python.org/3/objects.inv
+              - { url: "https://raw.githubusercontent.com/terok-ai/docs-inventories/master/terok-sandbox/objects.inv", base_url: "https://terok-ai.github.io/terok-sandbox/" }
+              - { url: !ENV [TEROK_INV_UTIL_URL, "https://raw.githubusercontent.com/terok-ai/docs-inventories/master/terok-util/objects.inv"], base_url: "https://terok-ai.github.io/terok-util/dev/" }
+        """)
+        out = _strip_sibling_inventory_lines(text)
+        assert "docs.python.org" in out
+        assert "terok-sandbox" not in out
+        assert "terok-util" not in out
+
+    def test_preserves_non_sibling_flow_mappings(self) -> None:
+        """Flow-mapping entries for third-party inventories survive."""
+        text = textwrap.dedent("""\
+            inventories:
+              - { url: "https://docs.pydantic.dev/latest/objects.inv", domains: [py] }
+        """)
+        assert _strip_sibling_inventory_lines(text) == text
+
     def test_preserves_trailing_newline(self) -> None:
         """A trailing newline survives the round-trip (mkdocs is fussy)."""
         text = "key: value\n"
