@@ -24,7 +24,7 @@ class TestPlan:
     def test_newest_patch_wins_its_minor(self) -> None:
         """Within one minor, only the highest patch is served."""
         entries = plan([_release("v0.8.0"), _release("v0.8.2"), _release("v0.8.1")], keep=6)
-        assert entries == [{"minor": "0.8", "tag": "v0.8.2", "title": "0.8.2"}]
+        assert entries == [{"minor": "0.8", "tag": "v0.8.2"}]
 
     def test_minors_are_newest_first_and_capped(self) -> None:
         """Retention keeps only the newest *keep* minors, newest first."""
@@ -71,8 +71,8 @@ class TestAssemble:
         """dev + served minors land in the tree; chooser is dev-first with latest label."""
         out = tmp_path / "tree"
         entries = [
-            {"minor": "0.9", "tag": "v0.9.1", "title": "0.9.1"},
-            {"minor": "0.8", "tag": "v0.8.2", "title": "0.8.2"},
+            {"minor": "0.9", "tag": "v0.9.1"},
+            {"minor": "0.8", "tag": "v0.8.2"},
         ]
         assemble(dev_site=dev_site, snapshots=snapshots, entries=entries, out=out)
 
@@ -113,9 +113,13 @@ class TestAssemble:
     ) -> None:
         """A deploy is a pure function of its inputs — stale content vanishes."""
         out = tmp_path / "tree"
-        entries = [{"minor": "0.9", "tag": "v0.9.1", "title": "0.9.1"}]
+        entries = [{"minor": "0.9", "tag": "v0.9.1"}]
         assemble(dev_site=dev_site, snapshots=snapshots, entries=entries, out=out)
-        assemble(dev_site=dev_site, snapshots=snapshots, entries=[], out=out)
+
+        fresh_dev = tmp_path / "fresh-dev"
+        fresh_dev.mkdir()
+        (fresh_dev / "index.html").write_text("<h1>fresh dev</h1>")
+        assemble(dev_site=fresh_dev, snapshots=snapshots, entries=[], out=out)
 
         assert not (out / "0.9").exists()
 
@@ -129,7 +133,7 @@ class TestMain:
         releases.write_text(json.dumps([_release("v0.8.1"), _release("v0.8.0")]))
         _main(["plan", "--releases", str(releases), "--keep", "3"])
         plan_json = capsys.readouterr().out
-        assert json.loads(plan_json) == [{"minor": "0.8", "tag": "v0.8.1", "title": "0.8.1"}]
+        assert json.loads(plan_json) == [{"minor": "0.8", "tag": "v0.8.1"}]
 
         dev = tmp_path / "site"
         dev.mkdir()

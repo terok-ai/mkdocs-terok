@@ -63,7 +63,7 @@ def plan(releases: list[dict], *, keep: int) -> list[dict]:
         keep: How many minors to serve.
 
     Returns:
-        Entries ``{"minor", "tag", "title"}``, newest minor first.
+        Entries ``{"minor", "tag"}``, newest minor first.
     """
     best: dict[tuple[int, int], tuple[int, str]] = {}
     for release in releases:
@@ -77,17 +77,16 @@ def plan(releases: list[dict], *, keep: int) -> list[dict]:
             best[(major, minor)] = (patch, release["tag_name"])
     newest = sorted(best, reverse=True)[:keep]
     return [
-        {
-            "minor": f"{major}.{minor}",
-            "tag": best[(major, minor)][1],
-            "title": best[(major, minor)][1].lstrip("v"),
-        }
-        for major, minor in newest
+        {"minor": f"{major}.{minor}", "tag": best[(major, minor)][1]} for major, minor in newest
     ]
 
 
 def assemble(*, dev_site: Path, snapshots: Path, entries: list[dict], out: Path) -> None:
     """Lay out the complete site tree for a Pages deploy.
+
+    Consumes its inputs: *dev_site* and the snapshot directories are
+    moved into the tree, not copied — they are per-run scratch extracts,
+    and a copy would double the whole served site on the deploy path.
 
     Args:
         dev_site: Freshly built ProperDocs output for master.
@@ -105,13 +104,13 @@ def assemble(*, dev_site: Path, snapshots: Path, entries: list[dict], out: Path)
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
-    shutil.copytree(dev_site, out / "dev")
+    shutil.move(dev_site, out / "dev")
     for entry in entries:
-        shutil.copytree(snapshots / entry["minor"], out / entry["minor"])
+        shutil.move(snapshots / entry["minor"], out / entry["minor"])
     chooser = [{"version": "dev", "title": "dev", "aliases": []}] + [
         {
             "version": entry["minor"],
-            "title": entry["title"],
+            "title": entry["tag"].lstrip("v"),
             "aliases": ["latest"] if entry is entries[0] else [],
         }
         for entry in entries
