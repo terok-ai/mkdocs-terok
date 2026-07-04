@@ -104,6 +104,51 @@ class TestAssemble:
                 dev_site=dev_site, snapshots=tmp_path / "none", entries=entries, out=tmp_path / "t"
             )
 
+    def test_root_assets_served_at_tree_root(
+        self, dev_site: Path, snapshots: Path, tmp_path: Path
+    ) -> None:
+        """Listed files stay reachable at the site root, nested paths included."""
+        (dev_site / "logo.svg").write_text("<svg>logo</svg>")
+        (dev_site / "img").mkdir()
+        (dev_site / "img" / "architecture.svg").write_text("<svg>arch</svg>")
+        out = tmp_path / "tree"
+
+        assemble(
+            dev_site=dev_site,
+            snapshots=snapshots,
+            entries=[{"minor": "0.9", "tag": "v0.9.1"}],
+            out=out,
+            root_assets=["logo.svg", "img/architecture.svg"],
+        )
+
+        assert (out / "logo.svg").read_text() == "<svg>logo</svg>"
+        assert (out / "img" / "architecture.svg").read_text() == "<svg>arch</svg>"
+        assert (out / "dev" / "logo.svg").is_file()
+        assert "url=0.9/" in (out / "index.html").read_text()
+
+    def test_missing_root_asset_fails_the_deploy(self, dev_site: Path, tmp_path: Path) -> None:
+        """A vanished asset must fail loudly, not publish broken well-known URLs."""
+        with pytest.raises(ValueError, match="missing from the dev build"):
+            assemble(
+                dev_site=dev_site,
+                snapshots=tmp_path / "none",
+                entries=[],
+                out=tmp_path / "tree",
+                root_assets=["gone.svg"],
+            )
+
+    @pytest.mark.parametrize("asset", ["../escape.svg", "/etc/passwd", "a/../../b", ""])
+    def test_rejects_unsafe_root_asset(self, dev_site: Path, tmp_path: Path, asset: str) -> None:
+        """A hand-crafted asset list must not steer copies outside the tree."""
+        with pytest.raises(ValueError, match="unsafe root asset"):
+            assemble(
+                dev_site=dev_site,
+                snapshots=tmp_path / "none",
+                entries=[],
+                out=tmp_path / "tree",
+                root_assets=[asset],
+            )
+
     def test_refuses_out_that_is_not_an_assembled_tree(
         self, dev_site: Path, tmp_path: Path
     ) -> None:
@@ -149,6 +194,7 @@ class TestMain:
         (dev / "index.html").write_text("dev")
         (tmp_path / "snapshots" / "0.8").mkdir(parents=True)
         (tmp_path / "snapshots" / "0.8" / "index.html").write_text("0.8")
+        (dev / "logo.svg").write_text("logo")
         plan_file = tmp_path / "plan.json"
         plan_file.write_text(plan_json)
         _main(
@@ -162,6 +208,9 @@ class TestMain:
                 str(plan_file),
                 "--out",
                 str(tmp_path / "tree"),
+                "--root-assets",
+                "logo.svg",
             ]
         )
         assert (tmp_path / "tree" / "0.8" / "index.html").read_text() == "0.8"
+        assert (tmp_path / "tree" / "logo.svg").read_text() == "logo"

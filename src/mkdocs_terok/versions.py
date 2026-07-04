@@ -15,7 +15,9 @@ release set and master.
 Retention is an assembly parameter: only the newest *keep* minors are
 served (the chooser and the site plateau instead of growing with the
 release cadence); older versions stay downloadable from their release
-assets forever.
+assets forever.  Root assets — files hotlinked at the site root by
+READMEs on GitHub and in immutable PyPI descriptions — are copied out
+of the dev build so their well-known URLs survive versioning.
 
 The module is IO-light on purpose: the ``publish-versioned-docs.yml``
 reusable workflow fetches the release list and downloads the snapshot
@@ -29,7 +31,8 @@ import argparse
 import json
 import re
 import shutil
-from pathlib import Path
+from collections.abc import Sequence
+from pathlib import Path, PurePosixPath
 
 #: Name of the per-release docs snapshot asset.
 DOCS_ASSET = "docs-site.tar.gz"
@@ -85,12 +88,27 @@ def plan(releases: list[dict], *, keep: int) -> list[dict]:
     ]
 
 
-def assemble(*, dev_site: Path, snapshots: Path, entries: list[dict], out: Path) -> None:
+def assemble(
+    *,
+    dev_site: Path,
+    snapshots: Path,
+    entries: list[dict],
+    out: Path,
+    root_assets: Sequence[str] = (),
+) -> None:
     """Lay out the complete site tree for a Pages deploy.
 
     Consumes its inputs: *dev_site* and the snapshot directories are
     moved into the tree, not copied — they are per-run scratch extracts,
     and a copy would double the whole served site on the deploy path.
+
+    *root_assets* are the site's well-known root URLs: files (READMEs
+    hotlink logos from GitHub and immutable PyPI descriptions) that must
+    stay reachable at ``<site>/<asset>`` even though the versioned tree
+    buries every build under a version directory.  Each is copied from
+    the dev build to the same path at the tree root — before the
+    assembler writes its own root files, so ``versions.json`` and the
+    redirect ``index.html`` can never be shadowed.
 
     Args:
         dev_site: Freshly built ProperDocs output for master.
@@ -99,20 +117,34 @@ def assemble(*, dev_site: Path, snapshots: Path, entries: list[dict], out: Path)
             [`plan`][mkdocs_terok.versions.plan].
         entries: The plan — newest minor first.
         out: Tree to create; replaced wholesale if it exists.
+        root_assets: Site-relative files to copy from the dev build to
+            the tree root.
 
     Raises:
-        ValueError: an entry's ``minor`` is not a plain ``X.Y`` name, or
-            *out* points at an existing non-empty directory that is not
-            a previously assembled tree (mispointed ``--out``).
+        ValueError: an entry's ``minor`` is not a plain ``X.Y`` name, a
+            root asset is not a plain relative path or is missing from
+            the dev build, or *out* points at an existing non-empty
+            directory that is not a previously assembled tree
+            (mispointed ``--out``).
     """
     for entry in entries:
         if not _MINOR.fullmatch(entry["minor"]):
             raise ValueError(f"unsafe minor in plan: {entry['minor']!r}")
+    for asset in root_assets:
+        parts = PurePosixPath(asset).parts
+        if not parts or parts[0] == "/" or ".." in parts:
+            raise ValueError(f"unsafe root asset: {asset!r}")
     _ensure_replaceable(out)
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
     shutil.move(dev_site, out / "dev")
+    for asset in root_assets:
+        source = out / "dev" / asset
+        if not source.is_file():
+            raise ValueError(f"root asset missing from the dev build: {asset}")
+        (out / asset).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, out / asset)
     for entry in entries:
         shutil.move(snapshots / entry["minor"], out / entry["minor"])
     chooser = [{"version": "dev", "title": "dev", "aliases": []}] + [
@@ -174,6 +206,13 @@ def _main(argv: list[str] | None = None) -> None:
     assemble_cmd.add_argument(
         "--out", type=Path, required=True, help="Tree to create for upload-pages-artifact"
     )
+    assemble_cmd.add_argument(
+        "--root-assets",
+        nargs="*",
+        default=[],
+        metavar="PATH",
+        help="Site-relative files copied from the dev build to the tree root (well-known URLs)",
+    )
 
     args = parser.parse_args(argv)
     if args.command == "plan":
@@ -184,6 +223,7 @@ def _main(argv: list[str] | None = None) -> None:
             snapshots=args.snapshots,
             entries=json.loads(args.plan.read_text()),
             out=args.out,
+            root_assets=args.root_assets,
         )
 
 
