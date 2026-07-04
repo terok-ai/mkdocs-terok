@@ -95,6 +95,19 @@ class TestAssemble:
         assert "url=dev/" in (out / "index.html").read_text()
         assert [e["version"] for e in json.loads((out / "versions.json").read_text())] == ["dev"]
 
+    def test_refuses_out_that_is_not_an_assembled_tree(
+        self, dev_site: Path, tmp_path: Path
+    ) -> None:
+        """A non-empty --out without the versions.json marker must not be wiped."""
+        precious = tmp_path / "home"
+        (precious / "Documents").mkdir(parents=True)
+        (precious / "Documents" / "thesis.txt").write_text("precious")
+
+        with pytest.raises(ValueError, match="not an assembled docs tree"):
+            assemble(dev_site=dev_site, snapshots=tmp_path / "none", entries=[], out=precious)
+
+        assert (precious / "Documents" / "thesis.txt").read_text() == "precious"
+
     def test_reassembly_replaces_previous_tree(
         self, dev_site: Path, snapshots: Path, tmp_path: Path
     ) -> None:

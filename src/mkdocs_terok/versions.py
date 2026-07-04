@@ -96,7 +96,12 @@ def assemble(*, dev_site: Path, snapshots: Path, entries: list[dict], out: Path)
             [`mkdocs_terok.versions.plan`][].
         entries: The plan — newest minor first.
         out: Tree to create; replaced wholesale if it exists.
+
+    Raises:
+        ValueError: *out* points at an existing non-empty directory that
+            is not a previously assembled tree (mispointed ``--out``).
     """
+    _ensure_replaceable(out)
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
@@ -115,6 +120,22 @@ def assemble(*, dev_site: Path, snapshots: Path, entries: list[dict], out: Path)
     target = entries[0]["minor"] if entries else "dev"
     (out / "index.html").write_text(_ROOT_REDIRECT.format(target=target))
     (out / ".nojekyll").touch()
+
+
+def _ensure_replaceable(out: Path) -> None:
+    """Refuse to wipe a directory that isn't an assembled docs tree.
+
+    Assembly replaces *out* wholesale, so a mispointed ``--out`` (a home
+    directory, a source checkout) must not cost data: the target must be
+    absent, empty (fresh runner temp dir), or carry the
+    ``versions.json`` marker from a previous assembly.
+
+    Raises:
+        ValueError: *out* exists, is non-empty, and has no marker.
+    """
+    if not out.exists() or not any(out.iterdir()) or (out / "versions.json").is_file():
+        return
+    raise ValueError(f"refusing to replace {out}: non-empty and not an assembled docs tree")
 
 
 def _main(argv: list[str] | None = None) -> None:
