@@ -15,14 +15,15 @@
 Shared [ProperDocs](https://properdocs.org/) documentation generators for terok projects.
 
 Provides reusable modules for generating CI workflow maps, integration test maps,
-code metrics reports, API reference pages, and config reference documentation from
-Pydantic models. A built-in `terok` ProperDocs plugin drives all generators
-automatically; the generator modules themselves never import the doc engine and can
-also be used standalone via `mkdocs-gen-files` shims.
+module maps, code metrics reports, API reference pages, and config reference
+documentation from Pydantic models. A built-in `terok` ProperDocs plugin drives
+every generator except the config reference (which needs a consumer-supplied
+Pydantic model); the generator modules themselves never import the doc engine and
+can also be used standalone via `mkdocs-gen-files` shims.
 
 The metrics report module can optionally parse output from
 [scc](https://github.com/boyter/scc),
-[complexipy](https://github.com/rohaquinern/complexipy),
+[complexipy](https://github.com/rohaquinlop/complexipy),
 [tach](https://github.com/gauge-sh/tach),
 [vulture](https://github.com/jendrikseipp/vulture), and
 [docstr-coverage](https://github.com/HunterMcGushion/docstr_coverage).
@@ -51,7 +52,7 @@ mkdocs-terok = "^0.7"
 
 Configured via the `terok` plugin in your `properdocs.yml`.  See this
 repository's own [`properdocs.yml`](properdocs.yml) for a self-documenting
-example that exercises every generator the package ships.
+example that exercises most of the generators the package ships.
 
 ## License
 

@@ -1,6 +1,6 @@
 # Versioned docs publishing
 
-Every terok-`*` repo serves per-release documentation on GitHub Pages
+Every `terok-*` repo serves per-release documentation on GitHub Pages
 with Material's version chooser: master merges refresh `/dev/`, and
 each PyPI release adds a frozen `/<minor>/` snapshot. The machinery
 lives in this package — the
@@ -63,9 +63,9 @@ contract Material reads, not the tool.
 ## One deployment per commit
 
 GitHub Pages supports exactly one deployment per commit SHA: the API
-rejects any other `pages_build_version`, and a second deployment of
-the same SHA is silently ignored (or not — the behaviour is
-unspecified). See
+404s any `pages_build_version` that is not a commit SHA, and a second
+deployment of the same SHA is silently ignored (or not — the behaviour
+is unspecified). See
 [actions/deploy-pages#383](https://github.com/actions/deploy-pages/issues/383).
 
 The workflow therefore makes sure each SHA's one deployment is the
