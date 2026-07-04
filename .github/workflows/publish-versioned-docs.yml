@@ -49,7 +49,41 @@ on:
 permissions: {}
 
 jobs:
+  # Pages supports exactly one deployment per commit SHA: the API 404s
+  # any pages_build_version that is not a commit SHA, and a second
+  # deployment of the same SHA is silently ignored (or not — behaviour
+  # is unspecified).  See actions/deploy-pages#383.  So each SHA's one
+  # deployment must be the right one: a final v*.*.* tag on the pushed
+  # commit means a PyPI release is in flight (finals always ship to
+  # PyPI; alphas never do) and its versioned publish owns this SHA —
+  # the branch push yields.  Alpha and untagged pushes deploy dev here
+  # as usual, so gh-only releases need no deploy of their own.
+  target:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.gate.outputs.deploy }}
+    steps:
+      - name: Yield branch pushes of final-release commits
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          deploy=true
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [[ "$GITHUB_REF" == refs/heads/* ]]; then
+            final_tags=$(gh api "repos/${GITHUB_REPOSITORY}/tags?per_page=100" --paginate \
+              --jq ".[] | select(.commit.sha == \"$GITHUB_SHA\") | .name" \
+              | grep -cE '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)
+            if [ "$final_tags" -gt 0 ]; then
+              deploy=false
+              echo "Commit carries a final release tag; the PyPI docs publish deploys it."
+            fi
+          fi
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+
   publish:
+    needs: target
+    if: needs.target.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
