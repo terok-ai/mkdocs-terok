@@ -1,4 +1,10 @@
 # Changelog
+## v0.7.3 — The Celestial Temple
+
+* Unique pages_build_version per deploy, in https://github.com/terok-ai/mkdocs-terok/pull/97
+
+**Full Changelog**: https://github.com/terok-ai/mkdocs-terok/compare/v0.7.2...v0.7.3
+
 ## v0.7.2 — The Celestial Temple
 
 Versioned docs trees + reusable publish workflow, https://github.com/terok-ai/mkdocs-terok/pull/95
