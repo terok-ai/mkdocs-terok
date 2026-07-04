@@ -49,8 +49,8 @@ A repo needs three pieces:
 
 3. **release.yml** — a `docs-version` job with `needs: pypi-publish`
    calling docs.yml with `release: true`. Only what users can
-   `pip install` mints a docs version; gh-only and testpypi targets
-   publish nothing.
+   `pip install` mints a docs version; gh-only releases publish
+   nothing.
 
 Repo settings: Pages source **GitHub Actions**, and the `github-pages`
 environment must allow deployments from `v*` tags (release deploys run
