@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Jiri Vyskocil
 # SPDX-License-Identifier: 0BSD
 
-"""Tests for the versioned docs tree maintainer."""
+"""Tests for the stateless versioned-docs assembler."""
 
 from __future__ import annotations
 
@@ -10,129 +10,132 @@ from pathlib import Path
 
 import pytest
 
-from mkdocs_terok.versions import _main, deploy
+from mkdocs_terok.versions import DOCS_ASSET, _main, assemble, plan
 
 
-@pytest.fixture
-def site(tmp_path: Path) -> Path:
-    """A minimal built site: an index page and a nested asset."""
-    built = tmp_path / "site"
-    (built / "assets").mkdir(parents=True)
-    (built / "index.html").write_text("<h1>built docs</h1>")
-    (built / "assets" / "extra.css").write_text("body {}")
-    return built
+def _release(tag: str, *, draft: bool = False, with_asset: bool = True) -> dict:
+    assets = [{"name": DOCS_ASSET}] if with_asset else []
+    return {"tag_name": tag, "draft": draft, "assets": assets}
 
 
-def _entries(tree: Path) -> list[dict]:
-    return json.loads((tree / "versions.json").read_text())
+class TestPlan:
+    """Verify snapshot selection from the GitHub release list."""
+
+    def test_newest_patch_wins_its_minor(self) -> None:
+        """Within one minor, only the highest patch is served."""
+        entries = plan([_release("v0.8.0"), _release("v0.8.2"), _release("v0.8.1")], keep=6)
+        assert entries == [{"minor": "0.8", "tag": "v0.8.2", "title": "0.8.2"}]
+
+    def test_minors_are_newest_first_and_capped(self) -> None:
+        """Retention keeps only the newest *keep* minors, newest first."""
+        releases = [_release(f"v0.{m}.0") for m in (7, 10, 8, 9)]
+        entries = plan(releases, keep=2)
+        assert [entry["minor"] for entry in entries] == ["0.10", "0.9"]
+
+    def test_ignores_alphas_drafts_and_assetless_releases(self) -> None:
+        """Only final, published releases carrying the docs asset qualify."""
+        releases = [
+            _release("v0.9.0a1"),
+            _release("v0.9.0", draft=True),
+            _release("v0.8.0", with_asset=False),
+            _release("v0.7.3"),
+        ]
+        assert [entry["tag"] for entry in plan(releases, keep=6)] == ["v0.7.3"]
+
+    def test_empty_release_list(self) -> None:
+        """Before the first release there is nothing to serve."""
+        assert plan([], keep=6) == []
 
 
-class TestDeploy:
-    """Verify the gh-pages tree layout after deploys."""
+class TestAssemble:
+    """Verify the deployed tree layout."""
 
-    def test_first_dev_deploy_creates_tree(self, site: Path, tmp_path: Path) -> None:
-        """A dev deploy into an empty tree yields dev/, versions.json and a dev redirect."""
-        tree = tmp_path / "tree"
-        deploy(site=site, tree=tree, version="dev")
+    @pytest.fixture
+    def dev_site(self, tmp_path: Path) -> Path:
+        """A minimal dev build."""
+        built = tmp_path / "dev-site"
+        built.mkdir()
+        (built / "index.html").write_text("<h1>dev docs</h1>")
+        return built
 
-        assert (tree / "dev" / "index.html").read_text() == "<h1>built docs</h1>"
-        assert (tree / "dev" / "assets" / "extra.css").is_file()
-        assert _entries(tree) == [{"version": "dev", "title": "dev", "aliases": []}]
-        assert "url=dev/" in (tree / "index.html").read_text()
-        assert (tree / ".nojekyll").is_file()
+    @pytest.fixture
+    def snapshots(self, tmp_path: Path) -> Path:
+        """Unpacked snapshots for minors 0.9 and 0.8."""
+        root = tmp_path / "snapshots"
+        for minor in ("0.9", "0.8"):
+            (root / minor).mkdir(parents=True)
+            (root / minor / "index.html").write_text(f"<h1>{minor} docs</h1>")
+        return root
 
-    def test_release_takes_over_root_redirect(self, site: Path, tmp_path: Path) -> None:
-        """Once a release holds the latest alias, the root redirect leaves dev."""
-        tree = tmp_path / "tree"
-        deploy(site=site, tree=tree, version="dev")
-        deploy(site=site, tree=tree, version="0.8", title="0.8.0", aliases=["latest"])
+    def test_tree_layout_and_chooser(self, dev_site: Path, snapshots: Path, tmp_path: Path) -> None:
+        """dev + served minors land in the tree; chooser is dev-first with latest label."""
+        out = tmp_path / "tree"
+        entries = [
+            {"minor": "0.9", "tag": "v0.9.1", "title": "0.9.1"},
+            {"minor": "0.8", "tag": "v0.8.2", "title": "0.8.2"},
+        ]
+        assemble(dev_site=dev_site, snapshots=snapshots, entries=entries, out=out)
 
-        assert (tree / "0.8" / "index.html").is_file()
-        assert (tree / "latest" / "index.html").is_file()
-        assert "url=latest/" in (tree / "index.html").read_text()
+        assert (out / "dev" / "index.html").read_text() == "<h1>dev docs</h1>"
+        assert (out / "0.9" / "index.html").read_text() == "<h1>0.9 docs</h1>"
+        assert (out / "0.8" / "index.html").read_text() == "<h1>0.8 docs</h1>"
+        assert json.loads((out / "versions.json").read_text()) == [
+            {"version": "dev", "title": "dev", "aliases": []},
+            {"version": "0.9", "title": "0.9.1", "aliases": ["latest"]},
+            {"version": "0.8", "title": "0.8.2", "aliases": []},
+        ]
+        assert "url=0.9/" in (out / "index.html").read_text()
+        assert (out / ".nojekyll").is_file()
 
-    def test_chooser_order_is_dev_then_newest(self, site: Path, tmp_path: Path) -> None:
-        """Entries render dev first, then releases newest to oldest."""
-        tree = tmp_path / "tree"
-        deploy(site=site, tree=tree, version="0.8", title="0.8.2", aliases=["latest"])
-        deploy(site=site, tree=tree, version="0.10", title="0.10.0", aliases=["latest"])
-        deploy(site=site, tree=tree, version="0.9", title="0.9.1")
-        deploy(site=site, tree=tree, version="dev")
+    def test_no_releases_serves_dev_only(self, dev_site: Path, tmp_path: Path) -> None:
+        """Before the first release the root redirect points at dev."""
+        out = tmp_path / "tree"
+        assemble(dev_site=dev_site, snapshots=tmp_path / "none", entries=[], out=out)
 
-        assert [entry["version"] for entry in _entries(tree)] == ["dev", "0.10", "0.9", "0.8"]
+        assert "url=dev/" in (out / "index.html").read_text()
+        assert [e["version"] for e in json.loads((out / "versions.json").read_text())] == ["dev"]
 
-    def test_alias_is_stolen_from_previous_release(self, site: Path, tmp_path: Path) -> None:
-        """Deploying a newer release moves the latest alias entry and directory."""
-        tree = tmp_path / "tree"
-        deploy(site=site, tree=tree, version="0.8", title="0.8.0", aliases=["latest"])
-        (site / "index.html").write_text("<h1>0.9 docs</h1>")
-        deploy(site=site, tree=tree, version="0.9", title="0.9.0", aliases=["latest"])
+    def test_reassembly_replaces_previous_tree(
+        self, dev_site: Path, snapshots: Path, tmp_path: Path
+    ) -> None:
+        """A deploy is a pure function of its inputs — stale content vanishes."""
+        out = tmp_path / "tree"
+        entries = [{"minor": "0.9", "tag": "v0.9.1", "title": "0.9.1"}]
+        assemble(dev_site=dev_site, snapshots=snapshots, entries=entries, out=out)
+        assemble(dev_site=dev_site, snapshots=snapshots, entries=[], out=out)
 
-        by_version = {entry["version"]: entry for entry in _entries(tree)}
-        assert by_version["0.8"]["aliases"] == []
-        assert by_version["0.9"]["aliases"] == ["latest"]
-        assert (tree / "latest" / "index.html").read_text() == "<h1>0.9 docs</h1>"
-
-    def test_patch_redeploy_replaces_minor_in_place(self, site: Path, tmp_path: Path) -> None:
-        """A patch release refreshes its minor directory and chooser title."""
-        tree = tmp_path / "tree"
-        deploy(site=site, tree=tree, version="0.8", title="0.8.0", aliases=["latest"])
-        (site / "index.html").write_text("<h1>0.8.1 docs</h1>")
-        deploy(site=site, tree=tree, version="0.8", title="0.8.1", aliases=["latest"])
-
-        assert [entry["title"] for entry in _entries(tree)] == ["0.8.1"]
-        assert (tree / "0.8" / "index.html").read_text() == "<h1>0.8.1 docs</h1>"
-
-    @pytest.mark.parametrize("name", ["../escape", "a/b", "..", ".hidden", ""])
-    def test_rejects_unsafe_directory_names(self, site: Path, tmp_path: Path, name: str) -> None:
-        """Version and alias names must be plain directory names — no traversal."""
-        tree = tmp_path / "tree"
-        with pytest.raises(ValueError, match="unsafe tree directory name"):
-            deploy(site=site, tree=tree, version=name)
-        with pytest.raises(ValueError, match="unsafe tree directory name"):
-            deploy(site=site, tree=tree, version="0.8", aliases=[name])
-
-    def test_refuses_a_tree_that_is_not_a_docs_tree(self, site: Path, tmp_path: Path) -> None:
-        """A non-empty --tree without the versions.json marker must not be touched."""
-        not_a_tree = tmp_path / "home"
-        (not_a_tree / "Documents").mkdir(parents=True)
-        (not_a_tree / "Documents" / "thesis.txt").write_text("precious")
-
-        with pytest.raises(ValueError, match="not a versioned docs tree"):
-            deploy(site=site, tree=not_a_tree, version="Documents")
-
-        assert (not_a_tree / "Documents" / "thesis.txt").read_text() == "precious"
-
-    def test_stale_version_files_are_dropped(self, site: Path, tmp_path: Path) -> None:
-        """Redeploying a version removes files the new build no longer produces."""
-        tree = tmp_path / "tree"
-        deploy(site=site, tree=tree, version="dev")
-        (site / "assets" / "extra.css").unlink()
-        deploy(site=site, tree=tree, version="dev")
-
-        assert not (tree / "dev" / "assets" / "extra.css").exists()
+        assert not (out / "0.9").exists()
 
 
 class TestMain:
-    """Verify the module CLI drives a deploy."""
+    """Verify the two-command CLI round-trip."""
 
-    def test_cli_deploys_with_alias(self, site: Path, tmp_path: Path) -> None:
-        """The argparse front-end forwards site, tree, version, title and aliases."""
-        tree = tmp_path / "tree"
+    def test_plan_then_assemble(self, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+        """plan output feeds assemble unchanged."""
+        releases = tmp_path / "releases.json"
+        releases.write_text(json.dumps([_release("v0.8.1"), _release("v0.8.0")]))
+        _main(["plan", "--releases", str(releases), "--keep", "3"])
+        plan_json = capsys.readouterr().out
+        assert json.loads(plan_json) == [{"minor": "0.8", "tag": "v0.8.1", "title": "0.8.1"}]
+
+        dev = tmp_path / "site"
+        dev.mkdir()
+        (dev / "index.html").write_text("dev")
+        (tmp_path / "snapshots" / "0.8").mkdir(parents=True)
+        (tmp_path / "snapshots" / "0.8" / "index.html").write_text("0.8")
+        plan_file = tmp_path / "plan.json"
+        plan_file.write_text(plan_json)
         _main(
             [
-                "--site",
-                str(site),
-                "--tree",
-                str(tree),
-                "--version",
-                "0.8",
-                "--title",
-                "0.8.2",
-                "--alias",
-                "latest",
+                "assemble",
+                "--dev",
+                str(dev),
+                "--snapshots",
+                str(tmp_path / "snapshots"),
+                "--plan",
+                str(plan_file),
+                "--out",
+                str(tmp_path / "tree"),
             ]
         )
-
-        assert _entries(tree) == [{"version": "0.8", "title": "0.8.2", "aliases": ["latest"]}]
-        assert (tree / "latest" / "index.html").is_file()
+        assert (tmp_path / "tree" / "0.8" / "index.html").read_text() == "0.8"

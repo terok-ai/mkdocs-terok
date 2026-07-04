@@ -1,23 +1,26 @@
 # SPDX-FileCopyrightText: 2026 Jiri Vyskocil
 # SPDX-License-Identifier: 0BSD
 
-"""Versioned documentation trees for terok-* GitHub Pages sites.
+"""Stateless versioned-docs assembly for terok-* GitHub Pages sites.
 
-Every PyPI release of a terok repo keeps a frozen docs snapshot under
-``/<minor>/`` on the repo's ``gh-pages`` branch, while each master merge
-refreshes ``/dev/``.  The Material version chooser is driven purely by a
-``versions.json`` file at the tree root — the layout contract established
-by `mike <https://github.com/jimporter/mike>`_.  mike itself cannot drive
-ProperDocs builds (it shells out to ``mkdocs``), so this module maintains
-the same tree layout directly: install a freshly built ``site/`` into its
-version directory, upsert the ``versions.json`` entry, re-materialise
-aliases (``latest``), and keep the root redirect aimed at the right
-default.
+Every PyPI release ships its built docs as an immutable release asset
+(``docs-site.tar.gz``); the served site is reassembled from scratch on
+every deploy: the newest final release of each of the last few minors
+plus a fresh ``/dev/`` build, with ``versions.json`` — the contract
+Material's version chooser reads — derived from the release list.
+Nothing is stored between deploys, so there is no ``gh-pages`` branch to
+protect, no history to squash, and a deploy is a pure function of the
+release set and master.
 
-The tree lives on ``gh-pages`` and is pushed by the
-``publish-versioned-docs.yml`` reusable workflow, which runs this module
-from the calling repo's locked docs environment (the same contract as
-[`mkdocs_terok.inventory`][]).
+Retention is an assembly parameter: only the newest *keep* minors are
+served (the chooser and the site plateau instead of growing with the
+release cadence); older versions stay downloadable from their release
+assets forever.
+
+The module is IO-light on purpose: the ``publish-versioned-docs.yml``
+reusable workflow fetches the release list and downloads the snapshot
+tarballs, while the selection and tree-layout logic lives here, where it
+is testable.
 """
 
 from __future__ import annotations
@@ -26,15 +29,13 @@ import argparse
 import json
 import re
 import shutil
-from collections.abc import Sequence
 from pathlib import Path
 
-_VERSIONS_FILE = "versions.json"
+#: Name of the per-release docs snapshot asset.
+DOCS_ASSET = "docs-site.tar.gz"
 
-#: Version and alias names become directory names inside the tree, so they
-#: must be single path components — no separators, no leading dot (which
-#: also rules out ``..``).
-_SAFE_COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+#: Final releases only — alphas never reach PyPI and mint no docs.
+_FINAL_TAG = re.compile(r"v(\d+)\.(\d+)\.(\d+)")
 
 _ROOT_REDIRECT = """\
 <!DOCTYPE html>
@@ -49,163 +50,113 @@ _ROOT_REDIRECT = """\
 """
 
 
-def deploy(
-    *,
-    site: Path,
-    tree: Path,
-    version: str,
-    title: str | None = None,
-    aliases: Sequence[str] = (),
-) -> None:
-    """Install a built ``site/`` as *version* inside the docs *tree*.
+def plan(releases: list[dict], *, keep: int) -> list[dict]:
+    """Select which release snapshots the served site carries.
 
-    The chooser entry for *version* is created or replaced; any alias in
-    *aliases* is taken over from whichever entry held it before.
+    From the GitHub release list, final ``vX.Y.Z`` releases carrying the
+    docs asset are grouped by minor; the highest patch wins its minor,
+    and the newest *keep* minors survive.
 
     Args:
-        site: Freshly built ProperDocs output directory.
-        tree: Root of the versioned docs tree (a ``gh-pages`` checkout).
-        version: Directory name and chooser identity — a minor release
-            like ``0.8``, or ``dev``.
-        title: Chooser label; releases pass the full version
-            (``0.8.2``).  Defaults to *version*.
-        aliases: Alias directories re-pointed at this version
-            (typically ``latest``).
+        releases: Release objects as returned by the GitHub API
+            (``tag_name``, ``draft``, ``assets[].name`` are consulted).
+        keep: How many minors to serve.
 
-    Raises:
-        ValueError: *version* or an alias is not a plain directory name
-            (path separators, a leading dot, or empty), which would let a
-            crafted CLI argument write outside the tree; or *tree* points
-            at an existing non-empty directory that carries no
-            ``versions.json`` marker (mispointed ``--tree``).
+    Returns:
+        Entries ``{"minor", "tag", "title"}``, newest minor first.
     """
-    _ensure_docs_tree(tree)
-    version_dir = _tree_dir(tree, version)
-    alias_dirs = [_tree_dir(tree, alias) for alias in aliases]
-    entries = _upsert(
-        _load_entries(tree), version=version, title=title or version, aliases=list(aliases)
-    )
-    tree.mkdir(parents=True, exist_ok=True)
-    _replace_dir(site, version_dir)
-    for alias_dir in alias_dirs:
-        _replace_dir(version_dir, alias_dir)
-    (tree / _VERSIONS_FILE).write_text(json.dumps(entries, indent=2) + "\n")
-    (tree / "index.html").write_text(_ROOT_REDIRECT.format(target=_default_target(entries)))
-    (tree / ".nojekyll").touch()
+    best: dict[tuple[int, int], tuple[int, str]] = {}
+    for release in releases:
+        match = _FINAL_TAG.fullmatch(release.get("tag_name", ""))
+        if not match or release.get("draft"):
+            continue
+        if not any(asset.get("name") == DOCS_ASSET for asset in release.get("assets", ())):
+            continue
+        major, minor, patch = (int(part) for part in match.groups())
+        if patch >= best.get((major, minor), (-1, ""))[0]:
+            best[(major, minor)] = (patch, release["tag_name"])
+    newest = sorted(best, reverse=True)[:keep]
+    return [
+        {
+            "minor": f"{major}.{minor}",
+            "tag": best[(major, minor)][1],
+            "title": best[(major, minor)][1].lstrip("v"),
+        }
+        for major, minor in newest
+    ]
 
 
-def _load_entries(tree: Path) -> list[dict]:
-    """Return the chooser entries recorded in *tree*, oldest deploy wins ties."""
-    versions_file = tree / _VERSIONS_FILE
-    if not versions_file.is_file():
-        return []
-    return json.loads(versions_file.read_text())
+def assemble(*, dev_site: Path, snapshots: Path, entries: list[dict], out: Path) -> None:
+    """Lay out the complete site tree for a Pages deploy.
 
-
-def _upsert(entries: list[dict], *, version: str, title: str, aliases: list[str]) -> list[dict]:
-    """Return *entries* with the *version* entry replaced and *aliases* stolen.
-
-    The result is chooser-ordered: ``dev`` first, then releases newest to
-    oldest — the order Material renders verbatim.
+    Args:
+        dev_site: Freshly built ProperDocs output for master.
+        snapshots: Directory holding one unpacked snapshot per served
+            minor (``snapshots/<minor>/``), as planned by
+            [`mkdocs_terok.versions.plan`][].
+        entries: The plan — newest minor first.
+        out: Tree to create; replaced wholesale if it exists.
     """
-    others = [entry for entry in entries if entry["version"] != version]
-    for entry in others:
-        entry["aliases"] = [alias for alias in entry["aliases"] if alias not in aliases]
-    merged = [*others, {"version": version, "title": title, "aliases": aliases}]
-    return sorted(merged, key=lambda entry: _release_key(entry["version"]), reverse=True)
-
-
-def _release_key(version: str) -> tuple[float, ...]:
-    """Sort key placing non-numeric channels (``dev``) above any release."""
-    try:
-        return tuple(float(part) for part in version.split("."))
-    except ValueError:
-        return (float("inf"),)
-
-
-def _default_target(entries: list[dict]) -> str:
-    """Where the tree-root redirect points.
-
-    The latest release when one exists; before the first release, the
-    newest entry there is (``dev``).
-    """
-    if any("latest" in entry["aliases"] for entry in entries):
-        return "latest"
-    return entries[0]["version"] if entries else "dev"
-
-
-def _ensure_docs_tree(tree: Path) -> None:
-    """Refuse to deploy into a directory that isn't a versioned docs tree.
-
-    Deploying replaces version directories wholesale, so a mispointed
-    ``--tree`` (a home directory, a source checkout) must not cost data.
-    Legitimate trees are exactly what the publish workflow produces: a
-    not-yet-existing or empty directory (fresh ``gh-pages`` worktree) or
-    one carrying the ``versions.json`` marker from a previous deploy.
-
-    Raises:
-        ValueError: *tree* exists, is non-empty, and has no marker.
-    """
-    if not tree.exists() or not any(tree.iterdir()) or (tree / _VERSIONS_FILE).is_file():
-        return
-    raise ValueError(f"not a versioned docs tree (non-empty, no {_VERSIONS_FILE}): {tree}")
-
-
-def _tree_dir(tree: Path, name: str) -> Path:
-    """Resolve *name* as a directory directly inside *tree*, or refuse.
-
-    Version and alias names come from CLI arguments and become directory
-    names, so anything that isn't a plain path component (separators, a
-    leading dot — which also rules out ``..``) is rejected, and the
-    resolved path must stay a direct child of the tree.
-
-    Raises:
-        ValueError: *name* would land outside (or on) the tree root.
-    """
-    if not _SAFE_COMPONENT.fullmatch(name):
-        raise ValueError(f"unsafe tree directory name: {name!r}")
-    candidate = (tree / name).resolve()
-    if not candidate.is_relative_to(tree.resolve()) or candidate == tree.resolve():
-        raise ValueError(f"unsafe tree directory name: {name!r}")
-    return candidate
-
-
-def _replace_dir(source: Path, target: Path) -> None:
-    """Copy *source* over *target*, dropping whatever was there before."""
-    if target.exists():
-        shutil.rmtree(target)
-    shutil.copytree(source, target)
+    if out.exists():
+        shutil.rmtree(out)
+    out.mkdir(parents=True)
+    shutil.copytree(dev_site, out / "dev")
+    for entry in entries:
+        shutil.copytree(snapshots / entry["minor"], out / entry["minor"])
+    chooser = [{"version": "dev", "title": "dev", "aliases": []}] + [
+        {
+            "version": entry["minor"],
+            "title": entry["title"],
+            "aliases": ["latest"] if entry is entries[0] else [],
+        }
+        for entry in entries
+    ]
+    (out / "versions.json").write_text(json.dumps(chooser, indent=2) + "\n")
+    target = entries[0]["minor"] if entries else "dev"
+    (out / "index.html").write_text(_ROOT_REDIRECT.format(target=target))
+    (out / ".nojekyll").touch()
 
 
 def _main(argv: list[str] | None = None) -> None:
-    """``python -m mkdocs_terok.versions`` entrypoint."""
+    """``python -m mkdocs_terok.versions`` entrypoint (plan / assemble)."""
     parser = argparse.ArgumentParser(
         prog="python -m mkdocs_terok.versions",
-        description="Install a built docs site into a versioned gh-pages tree.",
+        description="Assemble a versioned docs site from release snapshots plus a dev build.",
     )
-    parser.add_argument("--site", type=Path, required=True, help="Built ProperDocs site directory")
-    parser.add_argument("--tree", type=Path, required=True, help="Root of the versioned docs tree")
-    parser.add_argument(
-        "--version", required=True, help="Version directory and chooser id (e.g. 0.8 or dev)"
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    plan_cmd = commands.add_parser("plan", help="Select served snapshots from the release list")
+    plan_cmd.add_argument(
+        "--releases", type=Path, required=True, help="GitHub API release list (JSON file)"
     )
-    parser.add_argument(
-        "--title", default=None, help="Chooser label (e.g. 0.8.2); defaults to --version"
+    plan_cmd.add_argument(
+        "--keep", type=int, default=6, help="How many newest minors to serve (default: 6)"
     )
-    parser.add_argument(
-        "--alias",
-        action="append",
-        default=[],
-        dest="aliases",
-        help="Alias directory re-pointed at this version (repeatable, e.g. latest)",
+
+    assemble_cmd = commands.add_parser("assemble", help="Lay out the site tree for deploy")
+    assemble_cmd.add_argument(
+        "--dev", type=Path, required=True, help="Built ProperDocs site for master"
     )
+    assemble_cmd.add_argument(
+        "--snapshots", type=Path, required=True, help="Directory of unpacked snapshots per minor"
+    )
+    assemble_cmd.add_argument(
+        "--plan", type=Path, required=True, help="Plan JSON produced by the plan command"
+    )
+    assemble_cmd.add_argument(
+        "--out", type=Path, required=True, help="Tree to create for upload-pages-artifact"
+    )
+
     args = parser.parse_args(argv)
-    deploy(
-        site=args.site,
-        tree=args.tree,
-        version=args.version,
-        title=args.title,
-        aliases=args.aliases,
-    )
+    if args.command == "plan":
+        print(json.dumps(plan(json.loads(args.releases.read_text()), keep=args.keep), indent=2))
+    else:
+        assemble(
+            dev_site=args.dev,
+            snapshots=args.snapshots,
+            entries=json.loads(args.plan.read_text()),
+            out=args.out,
+        )
 
 
 if __name__ == "__main__":
