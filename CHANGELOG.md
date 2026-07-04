@@ -1,4 +1,10 @@
 # Changelog
+## v0.7.4 — The Ninth Orb
+
+* Serve well-known root assets across versioned deploys, https://github.com/terok-ai/mkdocs-terok/pull/101
+
+**Full Changelog**: https://github.com/terok-ai/mkdocs-terok/compare/v0.7.3...v0.7.4
+
 ## v0.7.3 — The Celestial Temple
 
 * Unique pages_build_version per deploy, in https://github.com/terok-ai/mkdocs-terok/pull/97
