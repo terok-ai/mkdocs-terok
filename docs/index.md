@@ -4,7 +4,7 @@ Shared [ProperDocs](https://properdocs.org/) documentation generators for [terok
 
 ## Overview
 
-`mkdocs-terok` is a **`terok` ProperDocs plugin** containig several documentation generators.
+`mkdocs-terok` is a **`terok` ProperDocs plugin** containing several documentation generators.
 For advanced use cases the generator modules are public and can be
 called directly via [`mkdocs-gen-files`](https://github.com/oprypin/mkdocs-gen-files).
 
@@ -46,18 +46,22 @@ content generation only.
 
 | Module | Purpose |
 |--------|---------|
-| `mkdocs_terok` | Package root — exports `brand_css_path()` and `mermaid_zoom_js_path()` |
+| `mkdocs_terok` | Package root — exports `brand_css_path()`, `mermaid_zoom_js_path()`, and `INVENTORY_ONLY_ENV` |
 | `mkdocs_terok.plugin` | ProperDocs `BasePlugin` wrapping all generators |
 | `mkdocs_terok.ref_pages` | Generate API reference pages from source tree |
 | `mkdocs_terok.ci_map` | Parse and visualize GitHub Actions workflows |
-| `mkdocs_terok.code_metrics` | Code quality analysis — optionally parses output from [scc](https://github.com/boyter/scc), [complexipy](https://github.com/rohaquinern/complexipy), [tach](https://github.com/gauge-sh/tach), [vulture](https://github.com/jendrikseipp/vulture), and [docstr-coverage](https://github.com/HunterMcGushion/docstr_coverage) (sections degrade gracefully when tools are absent) |
+| `mkdocs_terok.code_metrics` | Code quality analysis — optionally parses output from [scc](https://github.com/boyter/scc), [complexipy](https://github.com/rohaquinlop/complexipy), [tach](https://github.com/gauge-sh/tach), [vulture](https://github.com/jendrikseipp/vulture), and [docstr-coverage](https://github.com/HunterMcGushion/docstr_coverage) (sections degrade gracefully when tools are absent) |
 | `mkdocs_terok.test_map` | Generate test suite maps with marker extraction |
+| `mkdocs_terok.module_map` | Module and class docstrings grouped by layer (`tach.toml`-aware) |
 | `mkdocs_terok.config_reference` | Render Pydantic models as config documentation |
+| `mkdocs_terok.inventory` | Build the repo's `objects.inv` without needing sibling inventories |
+| `mkdocs_terok.versions` | Assemble the versioned docs tree from release snapshots — see [Versioned docs publishing](versioned-docs.md) |
 
 ## Dogfooding
 
-This documentation site **uses mkdocs-terok on itself**. Every generator in the
-library is exercised against this very repository via the `terok` plugin — see
+This documentation site **uses mkdocs-terok on itself**: the CI map, code
+metrics, test map, and reference page generators run via the `terok` plugin,
+and the config reference renderers run via a `mkdocs-gen-files` script — see
 [`properdocs.yml`](https://github.com/terok-ai/mkdocs-terok/blob/master/properdocs.yml)
 on master for the full live configuration.
 
