@@ -100,10 +100,12 @@ jobs:
 
       # The tree accumulates on gh-pages; a worktree keeps it apart from
       # the default-branch checkout that carries the poetry environment.
+      # Depth 1: only the tip tree matters (deploys append full-state
+      # commits), so the fetch stays O(site) instead of O(history).
       - name: Check out the docs tree (gh-pages)
         run: |
           set -euo pipefail
-          if git fetch origin +gh-pages:refs/remotes/origin/gh-pages; then
+          if git fetch --depth 1 origin +gh-pages:refs/remotes/origin/gh-pages; then
             git worktree add -B gh-pages tree origin/gh-pages
           else
             git worktree add --orphan -b gh-pages tree
