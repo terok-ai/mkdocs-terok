@@ -1,4 +1,10 @@
 # Changelog
+## v0.7.2 — The Celestial Temple
+
+Versioned docs trees + reusable publish workflow, https://github.com/terok-ai/mkdocs-terok/pull/95
+
+**Full Changelog**: https://github.com/terok-ai/mkdocs-terok/compare/v0.7.1...v0.7.2
+
 ## v0.7.1 — Complexipy Cache
 
 ## What's Changed
