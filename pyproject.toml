@@ -67,6 +67,7 @@ reuse = "^6.2.0"
 pytest = ">=7.0"
 pytest-cov = ">=4.0"
 pydantic = ">=2.6"
+tach = ">=0.34"
 
 
 [tool.pytest.ini_options]
