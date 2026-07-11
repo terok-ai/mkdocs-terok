@@ -23,12 +23,21 @@ plugin imports from `properdocs.*`. ProperDocs' plugin loader reads both
 ```bash
 make lint       # Run linter (required before every commit)
 make format     # Auto-fix lint issues if lint fails
+make test-fast  # Only the tests affected by your branch diff (tach impact analysis)
 make test       # Run full test suite with coverage
 make docstrings # Check docstring coverage (minimum 95%)
 make deadcode   # Find dead code
 make reuse      # Check REUSE (SPDX license/copyright) compliance
 make check      # Run lint + test + docstrings + deadcode + reuse
 ```
+
+**During development, ALWAYS iterate with `make test-fast`.** Rerunning the
+full suite after every edit is the single biggest time sink in agent dev
+loops — don't do it; run the full `make test` exactly once, right before
+committing. One exception: impact analysis follows the Python import graph
+only, so after changing non-Python inputs (YAML, templates, shell scripts)
+run the full `make test` — `make test-fast` would skip tests that are
+actually affected.
 
 ## Coding Standards
 

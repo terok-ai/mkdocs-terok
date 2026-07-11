@@ -1,4 +1,4 @@
-.PHONY: all lint format test docstrings deadcode reuse readme-version check install install-dev clean spdx docs docs-serve
+.PHONY: all lint format test test-fast docstrings deadcode reuse readme-version check install install-dev clean spdx docs docs-serve
 
 REPORTS_DIR ?= reports
 COVERAGE_XML ?= $(REPORTS_DIR)/coverage.xml
@@ -17,6 +17,13 @@ lint:
 format:
 	poetry run ruff check --fix .
 	poetry run ruff format .
+
+# Fast dev loop: run only the tests affected by the branch diff (tach
+# impact analysis), no coverage.  Impact analysis follows the Python
+# import graph only — after touching non-Python inputs (YAML, templates,
+# scripts) run the full `make test` instead.
+test-fast:
+	poetry run pytest tests/ --tach
 
 # Run tests with coverage
 test:
