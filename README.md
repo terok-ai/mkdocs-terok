@@ -41,11 +41,13 @@ pip install mkdocs-terok
 ```
 
 
-**Poetry** — `pyproject.toml`:
+**uv** — `pyproject.toml` (PEP 735 dependency group):
 
 ```toml
-[tool.poetry.group.docs.dependencies]
-mkdocs-terok = "^0.7"
+[dependency-groups]
+docs = [
+    "mkdocs-terok~=0.7.0",
+]
 ```
 
 ## Configuration

@@ -5,7 +5,8 @@ updates:
     schedule:
       interval: "weekly"
 
+  # Python dependencies (pip ecosystem covers uv.lock/pyproject.toml)
   - package-ecosystem: "pip"
-    directory: "/.github"
+    directory: "/"
     schedule:
       interval: "weekly"

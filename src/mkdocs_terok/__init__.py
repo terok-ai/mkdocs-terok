@@ -11,9 +11,14 @@ remain usable standalone (they never import properdocs themselves).
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version as _meta_version
 from pathlib import Path
 
-__version__ = "0.0.0"  # managed by poetry-dynamic-versioning
+__version__: str = "0.0.0"  # placeholder for runs without installed metadata
+try:
+    __version__ = _meta_version("mkdocs-terok")
+except PackageNotFoundError:
+    pass  # editable install or running from source without metadata
 
 
 INVENTORY_ONLY_ENV: str = "MKDOCS_TEROK_INVENTORY_ONLY"
@@ -21,7 +26,7 @@ INVENTORY_ONLY_ENV: str = "MKDOCS_TEROK_INVENTORY_ONLY"
 to skip every generator that ``objects.inv`` doesn't depend on
 (``ci_map``, ``code_metrics``, ``test_map``, ``module_map``).
 Set by [`mkdocs_terok.inventory.build_inventory`][] when subprocessing
-``properdocs build`` so a minimal ``poetry install --only main,docs``
+``properdocs build`` so a minimal ``uv sync --no-default-groups --group docs``
 env doesn't trip generators that need ``pytest``/``scc``/``vulture``.
 Lives at the package root so both the plugin and the inventory builder
 can read the same constant without crossing tach module boundaries."""
