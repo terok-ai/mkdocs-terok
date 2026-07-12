@@ -40,97 +40,19 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # The build lives in docs-build.yml (reusable across the package
+  # family; hosted here).  The local ``./`` ref runs it at this very
+  # commit — sibling repos pin it by release tag instead.
   build:
     if: github.repository == 'terok-ai/mkdocs-terok' && (github.ref == 'refs/heads/master' || inputs.release)
-    runs-on: ubuntu-latest
     permissions:
       contents: read
       actions: read
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
-        with:
-          enable-cache: true
-
-      - name: Install scc
-        env:
-          SCC_SHA256: 6c31f4d0cf3b7a8c5ca910fa4e451949434798f6541ec5dea4b83f4973e13772
-        run: |
-          set -euo pipefail
-          curl -fsSLo /tmp/scc.tar.gz \
-            "https://github.com/boyter/scc/releases/download/v3.5.0/scc_Linux_x86_64.tar.gz"
-          echo "${SCC_SHA256}  /tmp/scc.tar.gz" | sha256sum -c -
-          sudo tar -xzf /tmp/scc.tar.gz -C /usr/local/bin scc
-
-      - name: Install dependencies
-        # Dropped the `test` group: this workflow no longer runs pytest; the
-        # `coverage` artifact below carries everything the treemap needs.
-        run: uv sync --locked --group docs
-
-      # Wait for ci.yml's run on this commit to finish. CI is fast (no
-      # third-party services on the critical path), so this normally returns
-      # within seconds when the workflows are triggered together by a master
-      # push. Failing CI fails the docs deploy — published treemap must agree
-      # with published code.
-      - name: Wait for CI on this commit
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const deadline = Date.now() + 20 * 60 * 1000;
-            const sleep = ms => new Promise(r => setTimeout(r, ms));
-            while (Date.now() < deadline) {
-              const { data } = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'ci.yml',
-                head_sha: context.sha,
-                per_page: 5,
-              });
-              const run = data.workflow_runs[0];
-              if (run?.status === 'completed') {
-                if (run.conclusion === 'success') {
-                  core.info(`CI succeeded for ${context.sha}`);
-                  return;
-                }
-                core.setFailed(
-                  `CI ${run.conclusion} for ${context.sha} — refusing to publish docs with a mismatched treemap`
-                );
-                return;
-              }
-              core.info(`CI for ${context.sha}: ${run?.status ?? 'not yet started'} — waiting`);
-              await sleep(20_000);
-            }
-            core.setFailed('Timed out after 20m waiting for CI')
-
-      - name: Coverage artifact (same SHA, required)
-        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151 # v21
-        with:
-          workflow: ci.yml
-          workflow_conclusion: success
-          commit: ${{ github.sha }}
-          name: coverage
-          path: reports
-          if_no_artifact_found: fail
-
-      - name: Build documentation
-        run: uv run properdocs build --strict
-
-      - name: Upload site for versioned publish
-        uses: actions/upload-artifact@v7
-        with:
-          name: docs-site
-          path: site/
+    uses: ./.github/workflows/docs-build.yml
+    with:
+      release: ${{ inputs.release == true }}
+      uv-sync-args: "--locked --group docs"
+      coverage-workflow: ci.yml
 
   # Local reference: this repo ships the reusable workflow, so it consumes
   # its own copy — consumers pin it by tag instead.
