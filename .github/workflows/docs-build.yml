@@ -154,7 +154,7 @@ jobs:
           if_no_artifact_found: fail
 
       - name: Build documentation
-        run: uv run properdocs build --strict
+        run: uv run --no-sync properdocs build --strict
 
       - name: Upload site for versioned publish
         if: github.ref == 'refs/heads/master' || inputs.release
