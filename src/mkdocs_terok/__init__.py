@@ -14,7 +14,7 @@ from __future__ import annotations
 from importlib.metadata import PackageNotFoundError, version as _meta_version
 from pathlib import Path
 
-__version__: str = "0.0.0"  # placeholder; replaced at build time
+__version__: str = "0.0.0"  # placeholder for runs without installed metadata
 try:
     __version__ = _meta_version("mkdocs-terok")
 except PackageNotFoundError:

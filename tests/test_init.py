@@ -25,3 +25,21 @@ def test_mermaid_zoom_js_has_spdx_header() -> None:
     text = mermaid_zoom_js_path().read_text(encoding="utf-8")
     assert "SPDX-License-Identifier" in text
     assert "SPDX-FileCopyrightText" in text
+
+
+def test_version_falls_back_without_package_metadata(monkeypatch) -> None:
+    """No installed metadata -> the placeholder version survives the import."""
+    import importlib
+    import importlib.metadata
+
+    import mkdocs_terok
+
+    def _missing(_name: str) -> str:
+        raise importlib.metadata.PackageNotFoundError
+
+    monkeypatch.setattr(importlib.metadata, "version", _missing)
+    try:
+        assert importlib.reload(mkdocs_terok).__version__ == "0.0.0"
+    finally:
+        monkeypatch.undo()
+        importlib.reload(mkdocs_terok)
