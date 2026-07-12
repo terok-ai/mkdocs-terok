@@ -51,6 +51,7 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -62,8 +63,12 @@ jobs:
         with:
           enable-cache: true
 
+      # The input reaches the shell via env, not template interpolation —
+      # a workflow input must never be able to rewrite the run script.
       - name: Install dependencies
-        run: uv sync ${{ inputs.uv-sync-args }}
+        env:
+          UV_SYNC_ARGS: ${{ inputs.uv-sync-args }}
+        run: uv sync $UV_SYNC_ARGS
 
       - name: Install scc (lines of code counter)
         env:
