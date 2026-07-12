@@ -104,7 +104,7 @@ class TerokPlugin(BasePlugin[TerokPluginConfig]):
         When [`INVENTORY_ONLY_ENV`][mkdocs_terok.INVENTORY_ONLY_ENV]
         is set, the four generators that don't feed ``objects.inv``
         (``ci_map``, ``code_metrics``, ``test_map``, ``module_map``)
-        are skipped, so a stripped-down ``poetry install --only main,docs``
+        are skipped, so a stripped-down ``uv sync --no-default-groups --group docs``
         environment can still produce the inventory without ``pytest``,
         ``scc``, ``vulture``, etc. on PATH.  ``ref_pages`` always runs
         (when enabled in user config) because every inventory entry

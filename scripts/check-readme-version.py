@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Jiri Vyskocil
 # SPDX-License-Identifier: 0BSD
-"""Lint: README's Poetry caret pin ↔ ``pyproject.toml``'s version.
+"""Lint: README's Poetry caret pin ↔ ``pyproject.toml``'s fallback version.
 
 The README shows the canonical install snippet — a Poetry caret pin
 (``mkdocs-terok = "^X.Y"``) consumers copy verbatim.  uv and pip
@@ -28,7 +28,9 @@ _PIN_RE = re.compile(r'mkdocs-terok\s*=\s*"\^(?P<major>\d+)\.(?P<minor>\d+)(?:\.
 
 def main() -> int:
     """Compare README caret against pyproject version; print + exit accordingly."""
-    pkg_version = tomllib.loads(PYPROJECT.read_text())["tool"]["poetry"]["version"]
+    pkg_version = tomllib.loads(PYPROJECT.read_text())["tool"]["hatch"]["version"][
+        "fallback-version"
+    ]
     pkg_major, pkg_minor = pkg_version.split(".")[:2]
 
     m = _PIN_RE.search(README.read_text())

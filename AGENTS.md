@@ -8,12 +8,12 @@ It produces strings/results that consumers wrap in thin mkdocs-gen-files shims.
 The package name stays `mkdocs-terok` for install-path stability; internally the
 plugin imports from `properdocs.*`. ProperDocs' plugin loader reads both
 `mkdocs.plugins` and `properdocs.plugins` entry-point groups, so the
-`[tool.poetry.plugins."mkdocs.plugins"]` declaration is preserved intentionally.
+`[project.entry-points."mkdocs.plugins"]` declaration is preserved intentionally.
 
 ## Technology Stack
 
 - **Language**: Python 3.12+
-- **Package Manager**: Poetry
+- **Package Manager**: uv
 - **Testing**: pytest with coverage
 - **Linting/Formatting**: ruff
 - **Documentation**: N/A (library is self-documenting via docstrings)
@@ -74,10 +74,10 @@ version:
   the patch-series form is exactly right — do *not* exact-pin them (it
   would fight the multi-repo release/PR-chain flow).
 
-Dev / test / docs / tooling dependencies (the `[tool.poetry.group.*]` groups)
+Dev / test / docs / tooling dependencies (the `[dependency-groups]` tables)
 are **exempt** — they are not shipped to installers and exact-pinning them is
 an unwarranted maintenance burden the developers can absorb. After changing
-any pin, run `poetry lock` and commit `pyproject.toml` and `poetry.lock`
+any pin, run `uv lock` and commit `pyproject.toml` and `uv.lock`
 together.
 
 **Comment discipline in `pyproject.toml`.** The dependency tables stay

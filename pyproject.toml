@@ -1,6 +1,6 @@
 [build-system]
-requires = ["poetry-core>=2.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
-build-backend = "poetry_dynamic_versioning.backend"
+requires = ["hatchling>=1.27", "hatch-vcs>=0.5"]
+build-backend = "hatchling.build"
 
 [project]
 name = "mkdocs-terok"
@@ -14,8 +14,22 @@ maintainers = [
     {name = "Jiri Vyskocil", email = "jiri@vyskocil.com"},
 ]
 keywords = ["properdocs", "mkdocs", "documentation", "code-metrics", "ci-map"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Framework :: MkDocs",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Documentation",
+    "Typing :: Typed",
+]
 requires-python = ">=3.12,<4.0"
-dynamic = ["version", "classifiers"]
+dynamic = ["version"]
 # Dependency pins follow the policy in AGENTS.md ("Dependency Pinning &
 # pyproject.toml Hygiene").  Keep the dependency list comment-free.
 dependencies = [
@@ -35,40 +49,38 @@ Security = "https://github.com/terok-ai/mkdocs-terok/security/policy"
 [project.entry-points."mkdocs.plugins"]
 terok = "mkdocs_terok.plugin:TerokPlugin"
 
-[tool.poetry]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Environment :: Console",
-    "Framework :: MkDocs",
-    "Intended Audience :: Developers",
-    "Operating System :: POSIX :: Linux",
-    "Programming Language :: Python",
-    "Topic :: Documentation",
-    "Typing :: Typed",
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "docstr-coverage>=2.3.2,<3",
+    "vulture>=2.12",
+    "reuse>=6.2.0,<7",
+]
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pydantic>=2.6",
+    "tach>=0.34",
+]
+docs = [
+    "mkdocs-material>=9.7.6",
+    "mkdocs-gen-files>=0.5",
+    "mkdocs-literate-nav>=0.6",
+    "mkdocstrings[python]>=0.26",
+    "pydantic>=2.6",
+    "complexipy>=5.0",
+    "tach>=0.34",
 ]
 
-packages = [
-  { include = "mkdocs_terok", from = "src" },
-]
+[tool.uv]
+default-groups = ["dev", "test"]
 
-include = [
-  { path = "src/mkdocs_terok/_assets/*.css" },
-  { path = "src/mkdocs_terok/_assets/*.js" },
-]
-version = "0.7.4"
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.7.4"
 
-[tool.poetry.group.dev.dependencies]
-ruff = ">=0.8"
-docstr-coverage = "^2.3.2"
-vulture = ">=2.12"
-reuse = "^6.2.0"
-
-[tool.poetry.group.test.dependencies]
-pytest = ">=7.0"
-pytest-cov = ">=4.0"
-pydantic = ">=2.6"
-tach = ">=0.34"
-
+[tool.hatch.build.targets.wheel]
+packages = ["src/mkdocs_terok"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -76,18 +88,6 @@ python_files = ["test_*.py"]
 python_classes = ["Test*", "*Tests"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
-
-[tool.poetry.group.docs]
-optional = true
-
-[tool.poetry.group.docs.dependencies]
-mkdocs-material = ">=9.7.6"
-mkdocs-gen-files = ">=0.5"
-mkdocs-literate-nav = ">=0.6"
-mkdocstrings = {version = ">=0.26", extras = ["python"]}
-pydantic = ">=2.6"
-complexipy = ">=5.0"
-tach = ">=0.34"
 
 [tool.ruff]
 target-version = "py312"
@@ -133,12 +133,3 @@ relative_files = true
 
 [tool.coverage.xml]
 output = "reports/coverage.xml"
-
-[tool.poetry-dynamic-versioning]
-enable = true
-vcs = "git"
-pattern = "^v(?P<base>\\d+\\.\\d+\\.\\d+)(?:(?P<stage>a)(?P<revision>\\d+))?$"
-style = "pep440"
-
-[tool.poetry-dynamic-versioning.substitution]
-folders = [{path = "src"}]
