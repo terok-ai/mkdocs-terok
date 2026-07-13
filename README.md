@@ -46,7 +46,7 @@ pip install mkdocs-terok
 ```toml
 [dependency-groups]
 docs = [
-    "mkdocs-terok~=0.7.0",
+    "mkdocs-terok~=0.8.0",
 ]
 ```
 
