@@ -1,4 +1,10 @@
 # Changelog
+## v0.8.0 — Past Prologue
+
+Host the fleet's reuseable docs build action
+
+**Full Changelog**: https://github.com/terok-ai/mkdocs-terok/compare/v0.7.4...v0.8.0
+
 ## v0.7.4 — The Ninth Orb
 
 * Serve well-known root assets across versioned deploys, https://github.com/terok-ai/mkdocs-terok/pull/101
