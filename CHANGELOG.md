@@ -1,4 +1,10 @@
 # Changelog
+## v0.8.1 — Not a Diplomatic Channel
+
+* Pick up XSS fix in mkdocs-material 9.7.7, https://github.com/terok-ai/mkdocs-terok/pull/114
+
+**Full Changelog**: https://github.com/terok-ai/mkdocs-terok/compare/v0.8.0...v0.8.1
+
 ## v0.8.0 — Past Prologue
 
 Host the fleet's reuseable docs build action
