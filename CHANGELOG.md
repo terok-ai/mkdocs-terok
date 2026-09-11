@@ -1,4 +1,10 @@
 # Changelog
+## v0.8.2 — You could use a new suit.
+
+* 3rd party dependency updates only.
+
+**Full Changelog**: https://github.com/terok-ai/mkdocs-terok/compare/v0.8.1...v0.8.2
+
 ## v0.8.1 — Not a Diplomatic Channel
 
 * Pick up XSS fix in mkdocs-material 9.7.7, https://github.com/terok-ai/mkdocs-terok/pull/114
