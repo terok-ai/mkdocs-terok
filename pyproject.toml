@@ -35,7 +35,7 @@ dynamic = ["version"]
 dependencies = [
     "PyYAML~=6.0",
     "properdocs~=1.6.7",
-    "squarify==0.4.4",
+    "squarify==0.4.5",
 ]
 
 [project.urls]
