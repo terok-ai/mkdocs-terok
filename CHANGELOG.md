@@ -1,4 +1,10 @@
 # Changelog
+## v0.8.4 — Things change.
+
+Python 3.15 support verification, internal comment and docstring disciplne, and CI and dependency updates only. No functional changes.
+
+**Full Changelog**: https://github.com/terok-ai/mkdocs-terok/compare/v0.8.3...v0.8.4
+
 ## v0.8.3 — A Man Alone
 
 * Raise the documentation build's Material minimum to 9.8.0 and refresh its lock
